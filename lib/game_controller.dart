@@ -36,31 +36,38 @@ class GameController {
   /// Widget that includes canvas
   final List<BlockCustomPaintWidget> gameBlockPaintWidget = [];
 
-  ///
+  /// Arguments for Custom Paint widgets to avoid recreating widgets and 
+  /// not using a global key to update the Canvas object
   final List<BlockCustomPaintArguments> blockCustomPaintArguments = [];
+
+  /// Screen contact coordinates
+  double tapPosX = 0;
+  double tapPosY = 0;
 
   int selectedBlockIndex = -1;
 
   void init() {
-    ///
+    /// Number of blocks per field
     final maxBlocks = sizeFieldInBlocks * sizeFieldInBlocks - 1;
     final blockValues = <int>[];
+
+    /// Generation of random numbers for blocks
     for (int i = 0; i < maxBlocks; i++) {
       blockValues.add(i);
     }
     blockValues.shuffle();
 
-    ///
+    /// Field size calculation by default values
     fieldSize = (blockSize + spaceBetweenBlocks) * sizeFieldInBlocks +
         spaceBetweenBlocks;
 
-    ///
+    /// Creating a two-dimensional array to determine the positions of all blocks
     gameField = List.generate(
         sizeFieldInBlocks, (_) => List.generate(sizeFieldInBlocks, (_) => 0));
 
     int nBlocks = 0;
 
-    ///
+    /// Creation of game blocks
     for (var i = 0; i < gameField.length; i++) {
       for (var j = 0; j < gameField[i].length; j++) {
         final posBlock = blockSize + spaceBetweenBlocks;
@@ -74,7 +81,7 @@ class GameController {
 
         gameBlocks.add(gameB);
 
-        ///
+        /// Creating an argument List with Canvas for Custom Paint Widgets
         blockCustomPaintArguments
             .add(BlockCustomPaintArguments(GameBlockPainter(gameBlock: gameB)));
 
@@ -85,48 +92,60 @@ class GameController {
       }
     }
 
-    ///
+    /// Creating Custom Paint Widgets with Canvas to Draw blocks
     for (final argument in blockCustomPaintArguments) {
       gameBlockPaintWidget
           .add(BlockCustomPaintWidget(gameBlockPainterArg: argument));
     }
   }
 
-  ///
-  void onDown(double tapPosX, double tapPosY) {
+  /// Screen touch
+  void onDown(double tapX, double tapY) {
+    tapPosX = tapX;
+    tapPosY = tapY;
+
+    /// Finding the block the cursor is on
     for (var i = 0; i < gameBlocks.length; i++) {
-      if (gameBlocks[i].blockHit(tapPosX, tapPosY, blockSize)) {
+      if (gameBlocks[i].blockHit(tapX, tapY, blockSize)) {
         selectedBlockIndex = i;
       }
     }
   }
 
-  ///
-  void onUp(double tapPosX, double tapPosY) {
+  /// Stop touching the screen
+  void onUp(double tapX, double tapY) {
     selectedBlockIndex = -1;
   }
 
-  ///
-  void onMove(double tapPosX_, double tapPosY_) {
+  /// Moving the cursor on the screen
+  void onMove(double tapX, double tapY) {
+
+    /// If you click on the game block
     if (selectedBlockIndex != -1) {
       final gameB = gameBlocks[selectedBlockIndex];
-      final shiftX = tapPosX_ - gameB.posX;
-      final shiftY = tapPosY_ - gameB.posY;
-      gameB.posX = tapPosX_;
-      gameB.posY = tapPosY_;
+
+      /// Move the game block, taking into account the coordinates of clicking on the object
+      final shiftX = tapX - gameB.posX - (tapPosX - gameB.posX);
+      final shiftY = tapY - gameB.posY - (tapPosY - gameB.posY);
+      gameB.posX = tapX - (tapPosX - gameB.posX);
+      gameB.posY = tapY - (tapPosY - gameB.posY);
+
       gameB.move(shiftX, shiftY);
 
       blockCustomPaintArguments[selectedBlockIndex].gameBlockPainter =
           GameBlockPainter(gameBlock: gameB);
     }
+
+    tapPosX = tapX;
+    tapPosY = tapY;
   }
 
-  ///
+  /// Screen resizing
   void resizeGameField(double screenWidth, double screenHeight) {
     double screenW = screenWidth;
     double screenH = screenHeight;
 
-    ///
+    /// Minimum window size limits for the web, so as not to break objects when scaling
     if (kIsWeb) {
       if (screenW < 500) {
         screenW = 500;
@@ -136,17 +155,17 @@ class GameController {
       }
     }
 
-    ///
+    /// Determining the minimum size of one side of the screen
     double minLength = screenW > screenH ? screenH : screenW;
     minLength -= screenOffset * 2;
 
-    ///
+    ///  If the size of one side of the screen has changed
     if (screenW != oldScreenSizeW || screenH != oldScreenSizeH) {
       scaleKoef = minLength / fieldSize;
       fieldSize = minLength;
       blockSize *= scaleKoef;
 
-      ///
+      /// Recalculate the field size depending on the current screen size
       double newFieldPosX = 0;
       double newFieldPosY = 0;
 
@@ -158,9 +177,8 @@ class GameController {
         newFieldPosY = screenH * 0.5 - fieldSize * 0.5;
       }
 
-      ///
+      /// Updating game models, shifting and scaling
       for (var i = 0; i < gameBlocks.length; i++) {
-        ///
         gameBlocks[i].update(
           newFieldPosX - gameFieldPosX,
           newFieldPosY - gameFieldPosY,
@@ -169,7 +187,7 @@ class GameController {
           scaleKoef,
         );
 
-        ///
+        /// Creation of new objects based on recalculation of old ones for redrawing
         blockCustomPaintArguments[i].gameBlockPainter =
             GameBlockPainter(gameBlock: gameBlocks[i]);
       }
@@ -182,6 +200,7 @@ class GameController {
     }
   }
 
+  /// Returns a list of Custom Paint widgets
   List<BlockCustomPaintWidget> get blockCustomPaintWidgetList =>
       gameBlockPaintWidget;
 }

@@ -1,3 +1,6 @@
+/// Matrix multiplication
+/// 
+/// Returns the resulting matrix
 List<List<double>> _multiplyMatrix(
     List<List<double>> matr1, List<List<double>> matr2) {
   var rows1 = matr1.length;
@@ -25,7 +28,11 @@ List<List<double>> _multiplyMatrix(
   return matr3;
 }
 
-///
+/// Scaling matrix
+/// 
+/// The matrix is relative to coordinates 0, 
+/// need to shift it to the origin, 
+/// scale it and return it to its previous position
 List<List<double>> scaleDrawing(
   List<List<double>> points,
   double scale,
@@ -42,7 +49,7 @@ List<List<double>> scaleDrawing(
   return moveDrawing(stepTwo, posX, posY);
 }
 
-///
+/// Offset matrix per delta distance
 List<List<double>> moveDrawing(
   List<List<double>> points,
   double shiftX,
@@ -55,7 +62,11 @@ List<List<double>> moveDrawing(
   ]);
 }
 
-///
+/// Rotation matrix
+/// 
+/// The matrix is relative to coordinates 0, 
+/// need to shift it to the origin, 
+/// rotation it and return it to its previous position
 List<List<double>> rotateDrawing(
     List<List<double>> points, double sinA, double cosA) {
   return _multiplyMatrix(points, [
