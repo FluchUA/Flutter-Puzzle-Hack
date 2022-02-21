@@ -10,13 +10,20 @@ class GameBlockPainter extends CustomPainter {
       ..color = gameBlock.color
       ..style = PaintingStyle.fill;
     // ..maskFilter = const ui.MaskFilter.blur(BlurStyle.normal, 25);
+    blockPosX = gameBlock.posX;
+    blockPosY = gameBlock.posY;
   }
 
   GameBlock gameBlock;
   Paint _paintLine = Paint();
 
+  ///
+  double blockPosX = 0;
+  double blockPosY = 0;
+
   @override
   void paint(Canvas canvas, Size size) {
+    print(gameBlock.value);
     var path = Path()
       ..moveTo(gameBlock.points[0][0], gameBlock.points[0][1])
       ..lineTo(gameBlock.points[1][0], gameBlock.points[1][1])
@@ -52,5 +59,9 @@ class GameBlockPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(GameBlockPainter oldDelegate) => true;
+  bool shouldRepaint(GameBlockPainter oldDelegate) {
+    // return oldDelegate.blockPosX != blockPosX ||
+    //     oldDelegate.blockPosY != blockPosY;
+    return true;
+  }
 }

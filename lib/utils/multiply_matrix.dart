@@ -53,7 +53,7 @@ List<List<double>> scaleDrawing(
 List<List<double>> moveDrawing(
   List<List<double>> points,
   double shiftX,
-  double shiftY,
+  double shiftY, 
 ) {
   return _multiplyMatrix(points, [
     [1, 0, 0],

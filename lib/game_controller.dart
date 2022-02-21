@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_canvas/objects/game_block/game_block.dart';
-import 'package:flutter_canvas/objects/game_block/game_block_painter.dart';
+import 'package:flutter_canvas/positions_model.dart';
 import 'package:flutter_canvas/widgets/block_custom_paint_widget.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-
-import 'widgets/block_custom_paint_arguments.dart';
 
 class GameController {
   GameController._();
@@ -18,7 +16,7 @@ class GameController {
   double scaleKoef = 1;
 
   /// The size of the playing field, in blocks and double value
-  int sizeFieldInBlocks = 4;
+  int sizeFieldInBlocks = 2;
   double fieldSize = 0;
 
   double gameFieldPosX = 0;
@@ -36,15 +34,27 @@ class GameController {
   /// Widget that includes canvas
   final List<BlockCustomPaintWidget> gameBlockPaintWidget = [];
 
-  /// Arguments for Custom Paint widgets to avoid recreating widgets and 
+  /// Arguments for Custom Paint widgets to avoid recreating widgets and
   /// not using a global key to update the Canvas object
-  final List<BlockCustomPaintArguments> blockCustomPaintArguments = [];
+  // final List<BlockCustomPaintArguments> blockCustomPaintArguments = [];
+  // final List<GameBlockPainter> gameBlockPainterList = [];
+
+  final List<PositionsModel> movePositions = [];
 
   /// Screen contact coordinates
   double tapPosX = 0;
   double tapPosY = 0;
 
   int selectedBlockIndex = -1;
+  int selectedBlockFieldIndexI = -1;
+  int selectedBlockFieldIndexJ = -1;
+
+  bool verticalMove = false;
+  bool horizontalMove = false;
+  bool leftMove = false;
+  bool rightMove = false;
+  bool upMove = false;
+  bool downMove = false;
 
   void init() {
     /// Number of blocks per field
@@ -68,8 +78,8 @@ class GameController {
     int nBlocks = 0;
 
     /// Creation of game blocks
-    for (var i = 0; i < gameField.length; i++) {
-      for (var j = 0; j < gameField[i].length; j++) {
+    for (var j = 0; j < gameField.length; j++) {
+      for (var i = 0; i < gameField[j].length; i++) {
         final posBlock = blockSize + spaceBetweenBlocks;
         final gameB = GameBlock(
           sizeBlock: blockSize,
@@ -79,11 +89,14 @@ class GameController {
           value: blockValues[nBlocks] + 1,
         );
 
+        ///
+        gameField[j][i] = blockValues[nBlocks] + 1;
         gameBlocks.add(gameB);
 
         /// Creating an argument List with Canvas for Custom Paint Widgets
-        blockCustomPaintArguments
-            .add(BlockCustomPaintArguments(GameBlockPainter(gameBlock: gameB)));
+        // blockCustomPaintArguments
+        //     .add(BlockCustomPaintArguments(GameBlockPainter(gameBlock: gameB)));
+        // gameBlockPainterList.add(GameBlockPainter(gameBlock: gameB));
 
         nBlocks++;
         if (maxBlocks == nBlocks) {
@@ -93,10 +106,10 @@ class GameController {
     }
 
     /// Creating Custom Paint Widgets with Canvas to Draw blocks
-    for (final argument in blockCustomPaintArguments) {
-      gameBlockPaintWidget
-          .add(BlockCustomPaintWidget(gameBlockPainterArg: argument));
-    }
+    // for (final gameBlockPainter in gameBlockPainterList) {
+    //   gameBlockPaintWidget
+    //       .add(BlockCustomPaintWidget(gameBlockPainter: gameBlockPainter));
+    // }
   }
 
   /// Screen touch
@@ -105,35 +118,239 @@ class GameController {
     tapPosY = tapY;
 
     /// Finding the block the cursor is on
-    for (var i = 0; i < gameBlocks.length; i++) {
-      if (gameBlocks[i].blockHit(tapX, tapY, blockSize)) {
-        selectedBlockIndex = i;
+    /// block search by value in matrix
+    for (var m = 0; m < gameBlocks.length; m++) {
+      if (gameBlocks[m].blockHit(tapX, tapY, blockSize)) {
+        /// Checking for possible block movement
+        for (var i = 0; i < gameField.length; i++) {
+          for (var j = 0; j < gameField[i].length; j++) {
+            if (gameField[i][j] == gameBlocks[m].value) {
+              selectedBlockFieldIndexI = i;
+              selectedBlockFieldIndexJ = j;
+
+              /// Search for an empty block horizontally
+              for (var k = 0; k < gameField[i].length; k++) {
+                if (gameField[i][k] == 0) {
+                  horizontalMove = true;
+                  if (k < j) {
+                    leftMove = true;
+                  } else {
+                    rightMove = true;
+                  }
+                  break;
+                }
+              }
+
+              /// If there was no block on the horizontal straight line,
+              /// search for an empty block vertically
+              if (!horizontalMove) {
+                for (var k = 0; k < gameField.length; k++) {
+                  if (gameField[k][j] == 0) {
+                    verticalMove = true;
+                    if (k < i) {
+                      upMove = true;
+                    } else {
+                      downMove = true;
+                    }
+                    break;
+                  }
+                }
+              }
+
+              _addMovedBlocks(i, j);
+              break;
+            }
+          }
+        }
+
+        selectedBlockIndex = m;
+        break;
       }
     }
   }
 
   /// Stop touching the screen
   void onUp(double tapX, double tapY) {
+    ///
+    if (selectedBlockIndex != -1 &&
+        selectedBlockFieldIndexI != -1 &&
+        selectedBlockFieldIndexJ != -1 &&
+        movePositions.isNotEmpty) {
+      ///
+      if (horizontalMove) {
+        ///
+        final closerToEnd = movePositions[0].gameBlock.posX >
+            movePositions[0].startX + (blockSize + spaceBetweenBlocks) * 0.2;
+        final closerToStart = movePositions[0].gameBlock.posX <
+            movePositions[0].startX - (blockSize + spaceBetweenBlocks) * 0.2;
+
+        ///
+        if ((closerToStart && leftMove) || (closerToEnd && rightMove)) {
+          for (final gBlockPos in movePositions) {
+            gBlockPos.gameBlock
+                .move(gBlockPos.endX - gBlockPos.gameBlock.posX, 0);
+            gBlockPos.gameBlock.posX = gBlockPos.endX;
+          }
+        } else {
+          for (final gBlockPos in movePositions) {
+            gBlockPos.gameBlock
+                .move(gBlockPos.startX - gBlockPos.gameBlock.posX, 0);
+            gBlockPos.gameBlock.posX = gBlockPos.startX;
+          }
+        }
+      } else if (verticalMove) {
+        ///
+        final closerToEnd = movePositions[0].gameBlock.posY >
+            movePositions[0].startY + (blockSize + spaceBetweenBlocks) * 0.2;
+        final closerToStart = movePositions[0].gameBlock.posY <
+            movePositions[0].startY - (blockSize + spaceBetweenBlocks) * 0.2;
+
+        ///
+        if ((closerToStart && upMove) || (closerToEnd && downMove)) {
+          for (final gBlockPos in movePositions) {
+            gBlockPos.gameBlock
+                .move(0, gBlockPos.endY - gBlockPos.gameBlock.posY);
+            gBlockPos.gameBlock.posY = gBlockPos.endY;
+          }
+        } else {
+          for (final gBlockPos in movePositions) {
+            gBlockPos.gameBlock
+                .move(0, gBlockPos.startY - gBlockPos.gameBlock.posY);
+            gBlockPos.gameBlock.posY = gBlockPos.startY;
+          }
+        }
+      }
+
+      ///
+      if (gameBlocks[selectedBlockIndex].posX == movePositions[0].endX &&
+          horizontalMove) {
+        ///
+        gameField[selectedBlockFieldIndexI][selectedBlockFieldIndexJ] = 0;
+
+        ///
+        for (var i = 0; i < movePositions.length; i++) {
+          if (leftMove) {
+            gameField[selectedBlockFieldIndexI]
+                    [selectedBlockFieldIndexJ - (i + 1)] =
+                movePositions[i].gameBlock.value;
+          } else {
+            gameField[selectedBlockFieldIndexI]
+                    [selectedBlockFieldIndexJ + i + 1] =
+                movePositions[i].gameBlock.value;
+          }
+        }
+      } else if (gameBlocks[selectedBlockIndex].posY == movePositions[0].endY &&
+          verticalMove) {
+        ///
+        gameField[selectedBlockFieldIndexI][selectedBlockFieldIndexJ] = 0;
+
+        ///
+        for (var i = 0; i < movePositions.length; i++) {
+          if (upMove) {
+            gameField[selectedBlockFieldIndexI - (i + 1)]
+                [selectedBlockFieldIndexJ] = movePositions[i].gameBlock.value;
+          } else {
+            gameField[selectedBlockFieldIndexI + i + 1]
+                [selectedBlockFieldIndexJ] = movePositions[i].gameBlock.value;
+          }
+        }
+      }
+    }
+
+    horizontalMove = false;
+    verticalMove = false;
+    leftMove = false;
+    rightMove = false;
+    upMove = false;
+    downMove = false;
+
+    movePositions.clear();
     selectedBlockIndex = -1;
+    selectedBlockFieldIndexI = -1;
+    selectedBlockFieldIndexJ = -1;
   }
 
   /// Moving the cursor on the screen
   void onMove(double tapX, double tapY) {
-
     /// If you click on the game block
-    if (selectedBlockIndex != -1) {
-      final gameB = gameBlocks[selectedBlockIndex];
+    if (selectedBlockIndex != -1 &&
+        selectedBlockFieldIndexI != -1 &&
+        selectedBlockFieldIndexJ != -1) {
+      ///
+      if (horizontalMove || verticalMove) {
+        final gameB = gameBlocks[selectedBlockIndex];
 
-      /// Move the game block, taking into account the coordinates of clicking on the object
-      final shiftX = tapX - gameB.posX - (tapPosX - gameB.posX);
-      final shiftY = tapY - gameB.posY - (tapPosY - gameB.posY);
-      gameB.posX = tapX - (tapPosX - gameB.posX);
-      gameB.posY = tapY - (tapPosY - gameB.posY);
+        /// Move the game block, taking into account the coordinates of clicking on the object
+        double shiftX = tapX - gameB.posX - (tapPosX - gameB.posX);
+        double shiftY = tapY - gameB.posY - (tapPosY - gameB.posY);
 
-      gameB.move(shiftX, shiftY);
+        /// Working with coordinates is necessary because when working only with an offset,
+        /// shaking sometimes appears
+        gameB.posX += shiftX;
+        gameB.posY += shiftY;
 
-      blockCustomPaintArguments[selectedBlockIndex].gameBlockPainter =
-          GameBlockPainter(gameBlock: gameB);
+        // gameB.posX = tapX - (tapPosX - gameB.posX);
+        // gameB.posY = tapY - (tapPosY - gameB.posY);
+
+        if (leftMove) {
+          if (gameB.posX <= movePositions[0].endX) {
+            shiftX = movePositions[0].endX - gameB.posX + shiftX;
+            gameB.posX = movePositions[0].endX;
+          } else if (gameB.posX >= movePositions[0].startX) {
+            shiftX = movePositions[0].startX - gameB.posX + shiftX;
+            gameB.posX = movePositions[0].startX;
+          }
+
+          shiftY = 0;
+          gameB.posY = movePositions[0].startY;
+        } else if (rightMove) {
+          if (gameB.posX > movePositions[0].endX) {
+            shiftX = movePositions[0].endX - gameB.posX + shiftX;
+            gameB.posX = movePositions[0].endX;
+          } else if (gameB.posX <= movePositions[0].startX) {
+            shiftX = movePositions[0].startX - gameB.posX + shiftX;
+            gameB.posX = movePositions[0].startX;
+          }
+
+          shiftY = 0;
+          gameB.posY = movePositions[0].startY;
+        } else if (upMove) {
+          if (gameB.posY <= movePositions[0].endY) {
+            shiftY = movePositions[0].endY - gameB.posY + shiftY;
+            gameB.posY = movePositions[0].endY;
+          } else if (gameB.posY >= movePositions[0].startY) {
+            shiftY = movePositions[0].startY - gameB.posY + shiftY;
+            gameB.posY = movePositions[0].startY;
+          }
+
+          shiftX = 0;
+          gameB.posX = movePositions[0].startX;
+        } else if (downMove) {
+          if (gameB.posY >= movePositions[0].endY) {
+            shiftY = movePositions[0].endY - gameB.posY + shiftY;
+            gameB.posY = movePositions[0].endY;
+          } else if (gameB.posY <= movePositions[0].startY) {
+            shiftY = movePositions[0].startY - gameB.posY + shiftY;
+            gameB.posY = movePositions[0].startY;
+          }
+
+          shiftX = 0;
+          gameB.posX = movePositions[0].startX;
+        }
+
+        for (var i = 0; i < movePositions.length; i++) {
+          if (i != 0) {
+            movePositions[i].gameBlock.posX += shiftX;
+            movePositions[i].gameBlock.posY += shiftY;
+          }
+
+          movePositions[i].gameBlock.move(shiftX, shiftY);
+        }
+
+        // blockCustomPaintArguments[selectedBlockIndex] =
+        //     GameBlockPainter(gameBlock: gameB);
+
+      }
     }
 
     tapPosX = tapX;
@@ -164,6 +381,7 @@ class GameController {
       scaleKoef = minLength / fieldSize;
       fieldSize = minLength;
       blockSize *= scaleKoef;
+      spaceBetweenBlocks *= scaleKoef;
 
       /// Recalculate the field size depending on the current screen size
       double newFieldPosX = 0;
@@ -188,8 +406,7 @@ class GameController {
         );
 
         /// Creation of new objects based on recalculation of old ones for redrawing
-        blockCustomPaintArguments[i].gameBlockPainter =
-            GameBlockPainter(gameBlock: gameBlocks[i]);
+        // gameBlockPainterList[i] = GameBlockPainter(gameBlock: gameBlocks[i]);
       }
 
       gameFieldPosX = newFieldPosX;
@@ -203,4 +420,93 @@ class GameController {
   /// Returns a list of Custom Paint widgets
   List<BlockCustomPaintWidget> get blockCustomPaintWidgetList =>
       gameBlockPaintWidget;
+
+  ///
+  void _addMovedBlocks(int indexI, int indexJ) {
+    final shiftDistance = blockSize + spaceBetweenBlocks;
+
+    if (horizontalMove) {
+      if (leftMove) {
+        for (var j = indexJ; j >= 0; j--) {
+          final blockValue = gameField[indexI][j];
+          if (blockValue == 0) {
+            break;
+          }
+          final posX = gameFieldPosX + j * shiftDistance + spaceBetweenBlocks;
+          final posY =
+              gameFieldPosY + indexI * shiftDistance + spaceBetweenBlocks;
+
+          final gBlock =
+              gameBlocks.where((element) => element.value == blockValue).first;
+          movePositions.add(PositionsModel(
+            posX,
+            posY,
+            posX - shiftDistance,
+            posY,
+            gBlock,
+          ));
+        }
+      } else {
+        for (var j = indexJ; j < gameField.length; j++) {
+          final blockValue = gameField[indexI][j];
+          if (blockValue == 0) {
+            break;
+          }
+          final posX = gameFieldPosX + j * shiftDistance + spaceBetweenBlocks;
+          final posY =
+              gameFieldPosY + indexI * shiftDistance + spaceBetweenBlocks;
+          final gBlock =
+              gameBlocks.where((element) => element.value == blockValue).first;
+          movePositions.add(PositionsModel(
+            posX,
+            posY,
+            posX + shiftDistance,
+            posY,
+            gBlock,
+          ));
+        }
+      }
+    } else if (verticalMove) {
+      if (upMove) {
+        for (var i = indexI; i >= 0; i--) {
+          final blockValue = gameField[i][indexJ];
+          if (blockValue == 0) {
+            break;
+          }
+          final posX =
+              gameFieldPosX + indexJ * shiftDistance + spaceBetweenBlocks;
+          final posY = gameFieldPosY + i * shiftDistance + spaceBetweenBlocks;
+          final gBlock =
+              gameBlocks.where((element) => element.value == blockValue).first;
+          movePositions.add(PositionsModel(
+            posX,
+            posY,
+            posX,
+            posY - shiftDistance,
+            gBlock,
+          ));
+        }
+      } else if (downMove) {
+        for (var i = indexI; i < gameField.length; i++) {
+          final blockValue = gameField[i][indexJ];
+          if (blockValue == 0) {
+            break;
+          }
+          final posX =
+              gameFieldPosX + indexJ * shiftDistance + spaceBetweenBlocks;
+          final posY = gameFieldPosY + i * shiftDistance + spaceBetweenBlocks;
+
+          final gBlock =
+              gameBlocks.where((element) => element.value == blockValue).first;
+          movePositions.add(PositionsModel(
+            posX,
+            posY,
+            posX,
+            posY + shiftDistance,
+            gBlock,
+          ));
+        }
+      }
+    }
+  }
 }

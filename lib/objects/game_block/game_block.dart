@@ -16,8 +16,6 @@ class GameBlock {
   int value;
   double posX = 0;
   double posY = 0;
-  double zoom = 1;
-  bool isTarget = false;
   List<List<double>> points = [];
 
   void update(
