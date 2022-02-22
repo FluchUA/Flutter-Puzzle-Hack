@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_canvas/game_controller.dart';
 import 'package:flutter_canvas/objects/game_block/game_block_painter.dart';
+import 'package:flutter_canvas/widgets/block_custom_paint_widget.dart';
 
 class GamePage extends StatefulWidget {
-  const GamePage({Key? key}) : super(key: key);
+  const GamePage({required this.nTiles, Key? key}) : super(key: key);
+
+  final int nTiles;
 
   @override
   _GamePageState createState() => _GamePageState();
@@ -11,28 +14,32 @@ class GamePage extends StatefulWidget {
 
 class _GamePageState extends State<GamePage>
     with SingleTickerProviderStateMixin {
-  final _gameController = GameController.instance;
-  late AnimationController _animController;
+  final _gameController = GameController();
+  late final Stream _streamUpdate;
 
   @override
   void initState() {
     super.initState();
-    _gameController.init();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 5000),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _animController.dispose();
-    super.dispose();
+    _gameController.init(nTiles: widget.nTiles);
+    _gameController.winCallback = _showDialog;
+    _streamUpdate = Stream.periodic(const Duration(milliseconds: 10), (x) => x);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color.fromARGB(255, 30, 51, 30),
+        actions: [
+          IconButton(
+            onPressed: () => _gameController.shuffleTiles(),
+            icon: const Icon(
+              Icons.restart_alt_rounded,
+              size: 30,
+            ),
+          ),
+        ],
+      ),
       body: SizedBox.expand(
         child: Listener(
           onPointerDown: (details) {
@@ -52,100 +59,64 @@ class _GamePageState extends State<GamePage>
               _gameController.resizeGameField(
                   constraints.maxWidth, constraints.maxHeight);
 
-              return AnimatedBuilder(
-                animation: _animController,
+              return StreamBuilder(
+                stream: _streamUpdate,
                 builder: (_, __) {
-                  // return Transform.rotate(
-                  //   angle: _animController.value * 2.0 * 3.14,
-                  //   child: Container(
-                  //     // key: UniqueKey(),
-                  //     color: const Color.fromARGB(255, 59, 100, 60),
-                  //     child: Stack(
-                  //       children: [
-                  //         // ..._gameController.blockCustomPaintWidgetList,
-                  //         RepaintBoundary(
-                  //           child: CustomPaint(
-                  //             painter: GameBlockPainter(
-                  //                 gameBlock: _gameController.gameBlocks[0]),
-                  //           ),
-                  //         ),
-                  //         RepaintBoundary(
-                  //           child: CustomPaint(
-                  //             painter: GameBlockPainter(
-                  //                 gameBlock: _gameController.gameBlocks[1]),
-                  //           ),
-                  //         ),
-                  //         RepaintBoundary(
-                  //           child: CustomPaint(
-                  //             painter: GameBlockPainter(
-                  //                 gameBlock: _gameController.gameBlocks[2]),
-                  //           ),
-                  //         ),
-                  //       ],
-                  //     ),
-                  //   ),
-                  // );
-
                   return Container(
                     color: const Color.fromARGB(255, 59, 100, 60),
                     child: Stack(
-                      children: [
-                        // ..._gameController.blockCustomPaintWidgetList,
-                        RepaintBoundary(
-                          child: CustomPaint(
-                            painter: GameBlockPainter(
-                                gameBlock: _gameController.gameBlocks[0]),
-                          ),
-                        ),
-                        RepaintBoundary(
-                          child: CustomPaint(
-                            painter: GameBlockPainter(
-                                gameBlock: _gameController.gameBlocks[1]),
-                          ),
-                        ),
-                        RepaintBoundary(
-                          child: CustomPaint(
-                            painter: GameBlockPainter(
-                                gameBlock: _gameController.gameBlocks[2]),
-                          ),
-                        ),
-                      ],
+                      children: _gameController.gameBlocks
+                          .map(
+                            (gameBlock) => BlockCustomPaintWidget(
+                              gameBlockPainter:
+                                  GameBlockPainter(gameBlock: gameBlock),
+                            ),
+                          )
+                          .toList(),
                     ),
                   );
                 },
               );
-
-              // return Container(
-              //   // key: UniqueKey(),
-              //   color: const Color.fromARGB(255, 59, 100, 60),
-              //   child: Stack(
-              //     children: [
-              //       // ..._gameController.blockCustomPaintWidgetList,
-              //       RepaintBoundary(
-              //         child: CustomPaint(
-              //           painter: GameBlockPainter(
-              //               gameBlock: _gameController.gameBlocks[0]),
-              //         ),
-              //       ),
-              //       RepaintBoundary(
-              //         child: CustomPaint(
-              //           painter: GameBlockPainter(
-              //               gameBlock: _gameController.gameBlocks[1]),
-              //         ),
-              //       ),
-              //       RepaintBoundary(
-              //         child: CustomPaint(
-              //           painter: GameBlockPainter(
-              //               gameBlock: _gameController.gameBlocks[2]),
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // );
             },
           ),
         ),
       ),
     );
+  }
+
+  ///
+  void _showDialog(int nTiles, int nMoves) {
+    WidgetsBinding.instance?.addPostFrameCallback((_) async {
+      bool backToMainMenu = false;
+      await showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Congratulations You Win!!!'),
+            content: Text('Tiles: $nTiles\nMoves: $nMoves'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  _gameController.shuffleTiles();
+                  Navigator.pop(context);
+                },
+                child: const Text('New Game'),
+              ),
+              TextButton(
+                onPressed: () {
+                  backToMainMenu = true;
+                  Navigator.pop(context);
+                },
+                child: const Text('Back to Main Menu'),
+              )
+            ],
+          );
+        },
+      );
+
+      if (backToMainMenu) {
+        Navigator.pop(context);
+      }
+    });
   }
 }

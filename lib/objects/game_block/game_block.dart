@@ -3,7 +3,7 @@ import 'package:flutter_canvas/utils/multiply_matrix.dart';
 
 class GameBlock {
   GameBlock({
-    required double sizeBlock,
+    required this.sizeBlock,
     required this.posX,
     required this.posY,
     required this.color,
@@ -14,8 +14,9 @@ class GameBlock {
 
   Color color;
   int value;
-  double posX = 0;
-  double posY = 0;
+  double sizeBlock;
+  double posX;
+  double posY;
   List<List<double>> points = [];
 
   void update(
@@ -27,6 +28,7 @@ class GameBlock {
   ) {
     points = scaleDrawing(points, scaleKoef, fieldPosX, fieldPosY);
     points = moveDrawing(points, shiftX, shiftY);
+    sizeBlock *= scaleKoef;
 
     posX = points[0][0];
     posY = points[0][1];

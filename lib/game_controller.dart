@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_canvas/objects/game_block/game_block.dart';
 import 'package:flutter_canvas/positions_model.dart';
@@ -5,8 +7,7 @@ import 'package:flutter_canvas/widgets/block_custom_paint_widget.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class GameController {
-  GameController._();
-  static final instance = GameController._();
+  Function(int nTiles, int nMoves)? winCallback;
 
   /// Block size and padding between them
   double blockSize = 125;
@@ -16,7 +17,7 @@ class GameController {
   double scaleKoef = 1;
 
   /// The size of the playing field, in blocks and double value
-  int sizeFieldInBlocks = 2;
+  int sizeFieldInBlocks = 3;
   double fieldSize = 0;
 
   double gameFieldPosX = 0;
@@ -34,16 +35,14 @@ class GameController {
   /// Widget that includes canvas
   final List<BlockCustomPaintWidget> gameBlockPaintWidget = [];
 
-  /// Arguments for Custom Paint widgets to avoid recreating widgets and
-  /// not using a global key to update the Canvas object
-  // final List<BlockCustomPaintArguments> blockCustomPaintArguments = [];
-  // final List<GameBlockPainter> gameBlockPainterList = [];
-
   final List<PositionsModel> movePositions = [];
 
   /// Screen contact coordinates
   double tapPosX = 0;
   double tapPosY = 0;
+
+  int nMoves = 0;
+  bool notEndGame = true;
 
   int selectedBlockIndex = -1;
   int selectedBlockFieldIndexI = -1;
@@ -56,14 +55,16 @@ class GameController {
   bool upMove = false;
   bool downMove = false;
 
-  void init() {
+  void init({int nTiles = 15}) {
+    sizeFieldInBlocks = sqrt(nTiles + 1).toInt();
+
     /// Number of blocks per field
     final maxBlocks = sizeFieldInBlocks * sizeFieldInBlocks - 1;
     final blockValues = <int>[];
 
     /// Generation of random numbers for blocks
     for (int i = 0; i < maxBlocks; i++) {
-      blockValues.add(i);
+      blockValues.add(i + 1);
     }
     blockValues.shuffle();
 
@@ -86,17 +87,12 @@ class GameController {
           posX: posBlock * i + spaceBetweenBlocks,
           posY: posBlock * j + spaceBetweenBlocks,
           color: Colors.green[100 * (i + 1)]!,
-          value: blockValues[nBlocks] + 1,
+          value: blockValues[nBlocks],
         );
 
         ///
-        gameField[j][i] = blockValues[nBlocks] + 1;
+        gameField[j][i] = blockValues[nBlocks];
         gameBlocks.add(gameB);
-
-        /// Creating an argument List with Canvas for Custom Paint Widgets
-        // blockCustomPaintArguments
-        //     .add(BlockCustomPaintArguments(GameBlockPainter(gameBlock: gameB)));
-        // gameBlockPainterList.add(GameBlockPainter(gameBlock: gameB));
 
         nBlocks++;
         if (maxBlocks == nBlocks) {
@@ -104,12 +100,6 @@ class GameController {
         }
       }
     }
-
-    /// Creating Custom Paint Widgets with Canvas to Draw blocks
-    // for (final gameBlockPainter in gameBlockPainterList) {
-    //   gameBlockPaintWidget
-    //       .add(BlockCustomPaintWidget(gameBlockPainter: gameBlockPainter));
-    // }
   }
 
   /// Screen touch
@@ -117,54 +107,57 @@ class GameController {
     tapPosX = tapX;
     tapPosY = tapY;
 
-    /// Finding the block the cursor is on
-    /// block search by value in matrix
-    for (var m = 0; m < gameBlocks.length; m++) {
-      if (gameBlocks[m].blockHit(tapX, tapY, blockSize)) {
-        /// Checking for possible block movement
-        for (var i = 0; i < gameField.length; i++) {
-          for (var j = 0; j < gameField[i].length; j++) {
-            if (gameField[i][j] == gameBlocks[m].value) {
-              selectedBlockFieldIndexI = i;
-              selectedBlockFieldIndexJ = j;
+    ///
+    if (notEndGame) {
+      /// Finding the block the cursor is on
+      /// block search by value in matrix
+      for (var m = 0; m < gameBlocks.length; m++) {
+        if (gameBlocks[m].blockHit(tapX, tapY, blockSize)) {
+          /// Checking for possible block movement
+          for (var i = 0; i < gameField.length; i++) {
+            for (var j = 0; j < gameField[i].length; j++) {
+              if (gameField[i][j] == gameBlocks[m].value) {
+                selectedBlockFieldIndexI = i;
+                selectedBlockFieldIndexJ = j;
 
-              /// Search for an empty block horizontally
-              for (var k = 0; k < gameField[i].length; k++) {
-                if (gameField[i][k] == 0) {
-                  horizontalMove = true;
-                  if (k < j) {
-                    leftMove = true;
-                  } else {
-                    rightMove = true;
-                  }
-                  break;
-                }
-              }
-
-              /// If there was no block on the horizontal straight line,
-              /// search for an empty block vertically
-              if (!horizontalMove) {
-                for (var k = 0; k < gameField.length; k++) {
-                  if (gameField[k][j] == 0) {
-                    verticalMove = true;
-                    if (k < i) {
-                      upMove = true;
+                /// Search for an empty block horizontally
+                for (var k = 0; k < gameField[i].length; k++) {
+                  if (gameField[i][k] == 0) {
+                    horizontalMove = true;
+                    if (k < j) {
+                      leftMove = true;
                     } else {
-                      downMove = true;
+                      rightMove = true;
                     }
                     break;
                   }
                 }
-              }
 
-              _addMovedBlocks(i, j);
-              break;
+                /// If there was no block on the horizontal straight line,
+                /// search for an empty block vertically
+                if (!horizontalMove) {
+                  for (var k = 0; k < gameField.length; k++) {
+                    if (gameField[k][j] == 0) {
+                      verticalMove = true;
+                      if (k < i) {
+                        upMove = true;
+                      } else {
+                        downMove = true;
+                      }
+                      break;
+                    }
+                  }
+                }
+
+                _addMovedBlocks(i, j);
+                break;
+              }
             }
           }
-        }
 
-        selectedBlockIndex = m;
-        break;
+          selectedBlockIndex = m;
+          break;
+        }
       }
     }
   }
@@ -239,6 +232,8 @@ class GameController {
                 movePositions[i].gameBlock.value;
           }
         }
+
+        nMoves++;
       } else if (gameBlocks[selectedBlockIndex].posY == movePositions[0].endY &&
           verticalMove) {
         ///
@@ -254,7 +249,11 @@ class GameController {
                 [selectedBlockFieldIndexJ] = movePositions[i].gameBlock.value;
           }
         }
+
+        nMoves++;
       }
+
+      _checkToWin();
     }
 
     horizontalMove = false;
@@ -346,10 +345,6 @@ class GameController {
 
           movePositions[i].gameBlock.move(shiftX, shiftY);
         }
-
-        // blockCustomPaintArguments[selectedBlockIndex] =
-        //     GameBlockPainter(gameBlock: gameB);
-
       }
     }
 
@@ -404,9 +399,6 @@ class GameController {
           gameFieldPosY,
           scaleKoef,
         );
-
-        /// Creation of new objects based on recalculation of old ones for redrawing
-        // gameBlockPainterList[i] = GameBlockPainter(gameBlock: gameBlocks[i]);
       }
 
       gameFieldPosX = newFieldPosX;
@@ -415,6 +407,35 @@ class GameController {
       oldScreenSizeW = screenW;
       oldScreenSizeH = screenH;
     }
+  }
+
+  ///
+  void shuffleTiles() {
+    // nMoves = 0;
+    // notEndGame = true;
+
+    // /// Number of blocks per field
+    // final maxBlocks = sizeFieldInBlocks * sizeFieldInBlocks - 1;
+    // final blockValues = <int>[];
+
+    // /// Generation of random numbers for blocks
+    // for (int i = 0; i < maxBlocks; i++) {
+    //   blockValues.add(i + 1);
+    // }
+    // blockValues.shuffle();
+    // int nBlocks = 0;
+
+    // for (var j = 0; j < gameField.length; j++) {
+    //   for (var i = 0; i < gameField[j].length; i++) {
+    //     if (gameField[j][i] != 0) {
+    //       final gameBlock =
+    //           gameBlocks.where((block) => block.value == gameField[j][i]).first;
+    //       gameBlock.value = blockValues[nBlocks];
+    //       gameField[j][i] = blockValues[nBlocks];
+    //       nBlocks++;
+    //     }
+    //   }
+    // }
   }
 
   /// Returns a list of Custom Paint widgets
@@ -505,6 +526,29 @@ class GameController {
             posY + shiftDistance,
             gBlock,
           ));
+        }
+      }
+    }
+  }
+
+  ///
+  void _checkToWin() {
+    if (gameField[gameField.length - 1][gameField.length - 1] == 0) {
+      var blockValue = 1;
+      final maxBlocks = gameField.length * gameField.length;
+      for (var i = 0; i < gameField.length; i++) {
+        for (var j = 0; j < gameField[i].length; j++) {
+          if (blockValue == gameField[i][j]) {
+            blockValue++;
+
+            if (blockValue == maxBlocks) {
+              notEndGame = false;
+              winCallback?.call(maxBlocks, nMoves);
+              break;
+            }
+          } else {
+            return;
+          }
         }
       }
     }

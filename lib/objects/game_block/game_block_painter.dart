@@ -12,6 +12,7 @@ class GameBlockPainter extends CustomPainter {
     // ..maskFilter = const ui.MaskFilter.blur(BlurStyle.normal, 25);
     blockPosX = gameBlock.posX;
     blockPosY = gameBlock.posY;
+    blockValue = gameBlock.value;
   }
 
   GameBlock gameBlock;
@@ -20,6 +21,7 @@ class GameBlockPainter extends CustomPainter {
   ///
   double blockPosX = 0;
   double blockPosY = 0;
+  int blockValue = 0;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -36,7 +38,7 @@ class GameBlockPainter extends CustomPainter {
     /////////////////////////////////////////
     const textStyle = TextStyle(
       color: Colors.black,
-      fontSize: 30,
+      fontSize: 60,
     );
 
     final textSpan = TextSpan(
@@ -51,17 +53,19 @@ class GameBlockPainter extends CustomPainter {
 
     textPainter.layout(
       minWidth: 0,
-      maxWidth: 50,
+      maxWidth: 100,
     );
-    final offset = Offset(gameBlock.posX, gameBlock.posY);
+    final offset = Offset(
+        gameBlock.posX + gameBlock.sizeBlock * 0.5 - textPainter.width * 0.5,
+        gameBlock.posY + gameBlock.sizeBlock * 0.5 - textPainter.height * 0.5);
     textPainter.paint(canvas, offset);
     /////////////////////////////////////////
   }
 
   @override
   bool shouldRepaint(GameBlockPainter oldDelegate) {
-    // return oldDelegate.blockPosX != blockPosX ||
-    //     oldDelegate.blockPosY != blockPosY;
-    return true;
+    return oldDelegate.blockPosX != blockPosX ||
+        oldDelegate.blockPosY != blockPosY ||
+        oldDelegate.blockValue != blockValue;
   }
 }
