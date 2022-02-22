@@ -25,7 +25,6 @@ class GameBlockPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    print(gameBlock.value);
     var path = Path()
       ..moveTo(gameBlock.points[0][0], gameBlock.points[0][1])
       ..lineTo(gameBlock.points[1][0], gameBlock.points[1][1])
@@ -38,7 +37,7 @@ class GameBlockPainter extends CustomPainter {
     /////////////////////////////////////////
     const textStyle = TextStyle(
       color: Colors.black,
-      fontSize: 60,
+      fontSize: 30,
     );
 
     final textSpan = TextSpan(
