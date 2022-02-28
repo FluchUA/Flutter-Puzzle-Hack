@@ -6,6 +6,13 @@ import 'package:flutter_canvas/positions_model.dart';
 import 'package:flutter_canvas/widgets/block_custom_paint_widget.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
+enum ShuffleDirection {
+  left,
+  right,
+  up,
+  down,
+}
+
 class GameController {
   Function(int nTiles, int nMoves)? winCallback;
 
@@ -60,13 +67,6 @@ class GameController {
 
     /// Number of blocks per field
     final maxBlocks = sizeFieldInBlocks * sizeFieldInBlocks - 1;
-    final blockValues = <int>[];
-
-    /// Generation of random numbers for blocks
-    for (int i = 0; i < maxBlocks; i++) {
-      blockValues.add(i + 1);
-    }
-    blockValues.shuffle();
 
     /// Field size calculation by default values
     fieldSize = (blockSize + spaceBetweenBlocks) * sizeFieldInBlocks +
@@ -76,30 +76,33 @@ class GameController {
     gameField = List.generate(
         sizeFieldInBlocks, (_) => List.generate(sizeFieldInBlocks, (_) => 0));
 
-    int nBlocks = 0;
+    int currentBlockValue = 1;
+    final blockSizeWithSpace = blockSize + spaceBetweenBlocks;
 
     /// Creation of game blocks
-    for (var j = 0; j < gameField.length; j++) {
-      for (var i = 0; i < gameField[j].length; i++) {
-        final posBlock = blockSize + spaceBetweenBlocks;
+    for (var i = 0; i < gameField.length; i++) {
+      for (var j = 0; j < gameField[i].length; j++) {
         final gameB = GameBlock(
           sizeBlock: blockSize,
-          posX: posBlock * i + spaceBetweenBlocks,
-          posY: posBlock * j + spaceBetweenBlocks,
-          color: Colors.green[100 * (i + 1)]!,
-          value: blockValues[nBlocks],
+          posX: blockSizeWithSpace * j + spaceBetweenBlocks,
+          posY: blockSizeWithSpace * i + spaceBetweenBlocks,
+          color: Colors.green[100 * (j + 1)]!,
+          value: currentBlockValue,
         );
 
         ///
-        gameField[j][i] = blockValues[nBlocks];
+        gameField[i][j] = currentBlockValue;
         gameBlocks.add(gameB);
 
-        nBlocks++;
-        if (maxBlocks == nBlocks) {
+        currentBlockValue++;
+        if (currentBlockValue > maxBlocks) {
           break;
         }
       }
     }
+
+    ///
+    shuffleTiles();
   }
 
   /// Screen touch
@@ -411,31 +414,173 @@ class GameController {
 
   ///
   void shuffleTiles() {
-    // nMoves = 0;
-    // notEndGame = true;
+    nMoves = 0;
+    notEndGame = true;
 
-    // /// Number of blocks per field
-    // final maxBlocks = sizeFieldInBlocks * sizeFieldInBlocks - 1;
-    // final blockValues = <int>[];
+    int fieldEmptyBIndexI = 0;
+    int fieldEmptyBIndexJ = 0;
 
-    // /// Generation of random numbers for blocks
-    // for (int i = 0; i < maxBlocks; i++) {
-    //   blockValues.add(i + 1);
-    // }
-    // blockValues.shuffle();
-    // int nBlocks = 0;
+    ///
+    final shuffleField = List.generate(
+        sizeFieldInBlocks, (_) => List.generate(sizeFieldInBlocks, (_) => 0));
 
-    // for (var j = 0; j < gameField.length; j++) {
-    //   for (var i = 0; i < gameField[j].length; i++) {
-    //     if (gameField[j][i] != 0) {
-    //       final gameBlock =
-    //           gameBlocks.where((block) => block.value == gameField[j][i]).first;
-    //       gameBlock.value = blockValues[nBlocks];
-    //       gameField[j][i] = blockValues[nBlocks];
-    //       nBlocks++;
-    //     }
-    //   }
-    // }
+    for (var i = 0; i < gameField.length; i++) {
+      for (var j = 0; j < gameField[i].length; j++) {
+        shuffleField[i][j] = gameField[i][j];
+
+        if (gameField[i][j] == 0) {
+          fieldEmptyBIndexI = i;
+          fieldEmptyBIndexJ = j;
+        }
+      }
+    }
+
+    /// Number of Shuffle
+    int maxBlocks = sizeFieldInBlocks * sizeFieldInBlocks;
+    var randDirection = Random();
+    var randNMovedB = Random();
+    final directionsLength = ShuffleDirection.values.length;
+
+    int emptyBIndexI = fieldEmptyBIndexI;
+    int emptyBIndexJ = fieldEmptyBIndexJ;
+
+    ///
+    maxBlocks *= 2;
+
+    ///
+    for (var i = 0; i < maxBlocks; i++) {
+      var shuffleDirection = ShuffleDirection.left;
+      int nMovedBlocks = 1;
+
+      if (i < maxBlocks - 2) {
+        shuffleDirection =
+            ShuffleDirection.values[randDirection.nextInt(directionsLength)];
+
+        ///
+        switch (shuffleDirection) {
+          case ShuffleDirection.left:
+            if (emptyBIndexJ == 0) {
+              nMovedBlocks = randNMovedB.nextInt(gameField.length - 1) + 1;
+              shuffleDirection = ShuffleDirection.right;
+              break;
+            }
+            nMovedBlocks = randNMovedB.nextInt(emptyBIndexJ) + 1;
+            break;
+          case ShuffleDirection.right:
+            if (emptyBIndexJ == gameField.length - 1) {
+              nMovedBlocks = randNMovedB.nextInt(gameField.length - 1) + 1;
+              shuffleDirection = ShuffleDirection.left;
+              break;
+            }
+            nMovedBlocks =
+                randNMovedB.nextInt((gameField.length - 1) - emptyBIndexJ) + 1;
+            break;
+          case ShuffleDirection.up:
+            if (emptyBIndexI == 0) {
+              nMovedBlocks = randNMovedB.nextInt(gameField.length - 1) + 1;
+              shuffleDirection = ShuffleDirection.down;
+              break;
+            }
+            nMovedBlocks = randNMovedB.nextInt(emptyBIndexI) + 1;
+            break;
+          case ShuffleDirection.down:
+            if (emptyBIndexI == gameField.length - 1) {
+              nMovedBlocks = randNMovedB.nextInt(gameField.length - 1) + 1;
+              shuffleDirection = ShuffleDirection.up;
+              break;
+            }
+            nMovedBlocks =
+                randNMovedB.nextInt((gameField.length - 1) - emptyBIndexI) + 1;
+            break;
+        }
+      } else {
+        ///
+        nMovedBlocks = 0;
+        if (emptyBIndexJ > fieldEmptyBIndexJ) {
+          shuffleDirection = ShuffleDirection.left;
+          nMovedBlocks = emptyBIndexJ - fieldEmptyBIndexJ;
+        } else if (emptyBIndexJ < fieldEmptyBIndexJ) {
+          shuffleDirection = ShuffleDirection.right;
+          nMovedBlocks = fieldEmptyBIndexJ - emptyBIndexJ;
+        } else if (emptyBIndexI > fieldEmptyBIndexI) {
+          shuffleDirection = ShuffleDirection.up;
+          nMovedBlocks = emptyBIndexI - fieldEmptyBIndexI;
+        } else if (emptyBIndexI < fieldEmptyBIndexI) {
+          shuffleDirection = ShuffleDirection.down;
+          nMovedBlocks = fieldEmptyBIndexI - emptyBIndexI;
+        }
+      }
+
+      ///
+      switch (shuffleDirection) {
+        case ShuffleDirection.left:
+          for (var j = 0; j < nMovedBlocks; j++) {
+            shuffleField[emptyBIndexI][emptyBIndexJ - j] =
+                shuffleField[emptyBIndexI][emptyBIndexJ - j - 1];
+
+            if (j == nMovedBlocks - 1) {
+              shuffleField[emptyBIndexI][emptyBIndexJ - j - 1] = 0;
+              emptyBIndexJ = emptyBIndexJ - j - 1;
+            }
+          }
+          break;
+        case ShuffleDirection.right:
+          for (var j = 0; j < nMovedBlocks; j++) {
+            shuffleField[emptyBIndexI][emptyBIndexJ + j] =
+                shuffleField[emptyBIndexI][emptyBIndexJ + j + 1];
+
+            if (j == nMovedBlocks - 1) {
+              shuffleField[emptyBIndexI][emptyBIndexJ + j + 1] = 0;
+              emptyBIndexJ = emptyBIndexJ + j + 1;
+            }
+          }
+          break;
+        case ShuffleDirection.up:
+          for (var j = 0; j < nMovedBlocks; j++) {
+            shuffleField[emptyBIndexI - j][emptyBIndexJ] =
+                shuffleField[emptyBIndexI - j - 1][emptyBIndexJ];
+
+            if (j == nMovedBlocks - 1) {
+              shuffleField[emptyBIndexI - j - 1][emptyBIndexJ] = 0;
+              emptyBIndexI = emptyBIndexI - j - 1;
+            }
+          }
+          break;
+        case ShuffleDirection.down:
+          for (var j = 0; j < nMovedBlocks; j++) {
+            shuffleField[emptyBIndexI + j][emptyBIndexJ] =
+                shuffleField[emptyBIndexI + j + 1][emptyBIndexJ];
+
+            if (j == nMovedBlocks - 1) {
+              shuffleField[emptyBIndexI + j + 1][emptyBIndexJ] = 0;
+              emptyBIndexI = emptyBIndexI + j + 1;
+            }
+          }
+          break;
+      }
+    }
+
+    ///
+    for (final gameBlock in gameBlocks) {
+      gameBlock.isChecked = false;
+    }
+
+    ///
+    for (var i = 0; i < gameField.length; i++) {
+      for (var j = 0; j < gameField[i].length; j++) {
+        if (gameField[i][j] != 0) {
+          for (final gameBlock in gameBlocks) {
+            if (gameBlock.value == gameField[i][j] && !gameBlock.isChecked) {
+              gameBlock.value = shuffleField[i][j];
+              gameBlock.isChecked = true;
+              break;
+            }
+          }
+        }
+
+        gameField[i][j] = shuffleField[i][j];
+      }
+    }
   }
 
   /// Returns a list of Custom Paint widgets

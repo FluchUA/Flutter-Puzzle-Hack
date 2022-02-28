@@ -17,6 +17,7 @@ class GameBlock {
   double sizeBlock;
   double posX;
   double posY;
+  bool isChecked = false;
   List<List<double>> points = [];
 
   void update(
