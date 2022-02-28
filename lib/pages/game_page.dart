@@ -43,8 +43,10 @@ class _GamePageState extends State<GamePage>
       body: SizedBox.expand(
         child: Listener(
           onPointerDown: (details) {
-            _gameController.onDown(
-                details.localPosition.dx, details.localPosition.dy);
+            if (_gameController.selectedBlockIndex == -1) {
+              _gameController.onDown(
+                  details.localPosition.dx, details.localPosition.dy);
+            }
           },
           onPointerUp: (details) {
             _gameController.onUp(
