@@ -1,8 +1,8 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_canvas/objects/game_block/game_block.dart';
 import 'package:flutter_canvas/positions_model.dart';
+import 'package:flutter_canvas/utils/common_values_model.dart';
 import 'package:flutter_canvas/widgets/block_custom_paint_widget.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -16,12 +16,10 @@ enum ShuffleDirection {
 class GameController {
   Function(int nTiles, int nMoves)? winCallback;
 
-  /// Block size and padding between them
-  double blockSize = 125;
-  double spaceBetweenBlocks = 8;
+  ///
+  final generalValues = CommonValuesModel.instance;
 
   double screenOffset = 20;
-  double scaleKoef = 1;
 
   /// The size of the playing field, in blocks and double value
   int sizeFieldInBlocks = 3;
@@ -69,24 +67,24 @@ class GameController {
     final maxBlocks = sizeFieldInBlocks * sizeFieldInBlocks - 1;
 
     /// Field size calculation by default values
-    fieldSize = (blockSize + spaceBetweenBlocks) * sizeFieldInBlocks +
-        spaceBetweenBlocks;
+    fieldSize = (generalValues.sizeBlock + generalValues.spaceBetweenBlocks) *
+            sizeFieldInBlocks +
+        generalValues.spaceBetweenBlocks;
 
     /// Creating a two-dimensional array to determine the positions of all blocks
     gameField = List.generate(
         sizeFieldInBlocks, (_) => List.generate(sizeFieldInBlocks, (_) => 0));
 
     int currentBlockValue = 1;
-    final blockSizeWithSpace = blockSize + spaceBetweenBlocks;
+    final blockSizeWithSpace =
+        generalValues.sizeBlock + generalValues.spaceBetweenBlocks;
 
     /// Creation of game blocks
     for (var i = 0; i < gameField.length; i++) {
       for (var j = 0; j < gameField[i].length; j++) {
         final gameB = GameBlock(
-          sizeBlock: blockSize,
-          posX: blockSizeWithSpace * j + spaceBetweenBlocks,
-          posY: blockSizeWithSpace * i + spaceBetweenBlocks,
-          color: Colors.green[100 * (j + 1)]!,
+          posX: blockSizeWithSpace * j + generalValues.spaceBetweenBlocks,
+          posY: blockSizeWithSpace * i + generalValues.spaceBetweenBlocks,
           value: currentBlockValue,
         );
 
@@ -115,7 +113,7 @@ class GameController {
       /// Finding the block the cursor is on
       /// block search by value in matrix
       for (var m = 0; m < gameBlocks.length; m++) {
-        if (gameBlocks[m].blockHit(tapX, tapY, blockSize)) {
+        if (gameBlocks[m].blockHit(tapX, tapY, generalValues.sizeBlock)) {
           /// Checking for possible block movement
           for (var i = 0; i < gameField.length; i++) {
             for (var j = 0; j < gameField[i].length; j++) {
@@ -176,9 +174,13 @@ class GameController {
       if (horizontalMove) {
         ///
         final closerToEnd = movePositions[0].gameBlock.posX >
-            movePositions[0].startX + (blockSize + spaceBetweenBlocks) * 0.2;
+            movePositions[0].startX +
+                (generalValues.sizeBlock + generalValues.spaceBetweenBlocks) *
+                    0.2;
         final closerToStart = movePositions[0].gameBlock.posX <
-            movePositions[0].startX - (blockSize + spaceBetweenBlocks) * 0.2;
+            movePositions[0].startX -
+                (generalValues.sizeBlock + generalValues.spaceBetweenBlocks) *
+                    0.2;
 
         ///
         if ((closerToStart && leftMove) || (closerToEnd && rightMove)) {
@@ -197,9 +199,13 @@ class GameController {
       } else if (verticalMove) {
         ///
         final closerToEnd = movePositions[0].gameBlock.posY >
-            movePositions[0].startY + (blockSize + spaceBetweenBlocks) * 0.2;
+            movePositions[0].startY +
+                (generalValues.sizeBlock + generalValues.spaceBetweenBlocks) *
+                    0.2;
         final closerToStart = movePositions[0].gameBlock.posY <
-            movePositions[0].startY - (blockSize + spaceBetweenBlocks) * 0.2;
+            movePositions[0].startY -
+                (generalValues.sizeBlock + generalValues.spaceBetweenBlocks) *
+                    0.2;
 
         ///
         if ((closerToStart && upMove) || (closerToEnd && downMove)) {
@@ -376,10 +382,8 @@ class GameController {
 
     ///  If the size of one side of the screen has changed
     if (screenW != oldScreenSizeW || screenH != oldScreenSizeH) {
-      scaleKoef = minLength / fieldSize;
+      generalValues.scaleUpdate(minLength / fieldSize);
       fieldSize = minLength;
-      blockSize *= scaleKoef;
-      spaceBetweenBlocks *= scaleKoef;
 
       /// Recalculate the field size depending on the current screen size
       double newFieldPosX = 0;
@@ -400,7 +404,6 @@ class GameController {
           newFieldPosY - gameFieldPosY,
           gameFieldPosX,
           gameFieldPosY,
-          scaleKoef,
         );
       }
 
@@ -589,7 +592,8 @@ class GameController {
 
   ///
   void _addMovedBlocks(int indexI, int indexJ) {
-    final shiftDistance = blockSize + spaceBetweenBlocks;
+    final shiftDistance =
+        generalValues.sizeBlock + generalValues.spaceBetweenBlocks;
 
     if (horizontalMove) {
       if (leftMove) {
@@ -598,9 +602,12 @@ class GameController {
           if (blockValue == 0) {
             break;
           }
-          final posX = gameFieldPosX + j * shiftDistance + spaceBetweenBlocks;
-          final posY =
-              gameFieldPosY + indexI * shiftDistance + spaceBetweenBlocks;
+          final posX = gameFieldPosX +
+              j * shiftDistance +
+              generalValues.spaceBetweenBlocks;
+          final posY = gameFieldPosY +
+              indexI * shiftDistance +
+              generalValues.spaceBetweenBlocks;
 
           final gBlock =
               gameBlocks.where((element) => element.value == blockValue).first;
@@ -618,9 +625,12 @@ class GameController {
           if (blockValue == 0) {
             break;
           }
-          final posX = gameFieldPosX + j * shiftDistance + spaceBetweenBlocks;
-          final posY =
-              gameFieldPosY + indexI * shiftDistance + spaceBetweenBlocks;
+          final posX = gameFieldPosX +
+              j * shiftDistance +
+              generalValues.spaceBetweenBlocks;
+          final posY = gameFieldPosY +
+              indexI * shiftDistance +
+              generalValues.spaceBetweenBlocks;
           final gBlock =
               gameBlocks.where((element) => element.value == blockValue).first;
           movePositions.add(PositionsModel(
@@ -639,9 +649,12 @@ class GameController {
           if (blockValue == 0) {
             break;
           }
-          final posX =
-              gameFieldPosX + indexJ * shiftDistance + spaceBetweenBlocks;
-          final posY = gameFieldPosY + i * shiftDistance + spaceBetweenBlocks;
+          final posX = gameFieldPosX +
+              indexJ * shiftDistance +
+              generalValues.spaceBetweenBlocks;
+          final posY = gameFieldPosY +
+              i * shiftDistance +
+              generalValues.spaceBetweenBlocks;
           final gBlock =
               gameBlocks.where((element) => element.value == blockValue).first;
           movePositions.add(PositionsModel(
@@ -658,9 +671,12 @@ class GameController {
           if (blockValue == 0) {
             break;
           }
-          final posX =
-              gameFieldPosX + indexJ * shiftDistance + spaceBetweenBlocks;
-          final posY = gameFieldPosY + i * shiftDistance + spaceBetweenBlocks;
+          final posX = gameFieldPosX +
+              indexJ * shiftDistance +
+              generalValues.spaceBetweenBlocks;
+          final posY = gameFieldPosY +
+              i * shiftDistance +
+              generalValues.spaceBetweenBlocks;
 
           final gBlock =
               gameBlocks.where((element) => element.value == blockValue).first;

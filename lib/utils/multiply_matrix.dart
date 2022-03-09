@@ -1,5 +1,5 @@
 /// Matrix multiplication
-/// 
+///
 /// Returns the resulting matrix
 List<List<double>> _multiplyMatrix(
     List<List<double>> matr1, List<List<double>> matr2) {
@@ -29,9 +29,9 @@ List<List<double>> _multiplyMatrix(
 }
 
 /// Scaling matrix
-/// 
-/// The matrix is relative to coordinates 0, 
-/// need to shift it to the origin, 
+///
+/// The matrix is relative to coordinates 0,
+/// need to shift it to the origin,
 /// scale it and return it to its previous position
 List<List<double>> scaleDrawing(
   List<List<double>> points,
@@ -53,7 +53,7 @@ List<List<double>> scaleDrawing(
 List<List<double>> moveDrawing(
   List<List<double>> points,
   double shiftX,
-  double shiftY, 
+  double shiftY,
 ) {
   return _multiplyMatrix(points, [
     [1, 0, 0],
@@ -63,15 +63,23 @@ List<List<double>> moveDrawing(
 }
 
 /// Rotation matrix
-/// 
-/// The matrix is relative to coordinates 0, 
-/// need to shift it to the origin, 
+///
+/// The matrix is relative to coordinates 0,
+/// need to shift it to the origin,
 /// rotation it and return it to its previous position
 List<List<double>> rotateDrawing(
-    List<List<double>> points, double sinA, double cosA) {
-  return _multiplyMatrix(points, [
+  List<List<double>> points,
+  double posX,
+  double posY,
+  double sinA,
+  double cosA,
+) {
+  final stepOne = moveDrawing(points, -posX, -posY);
+  final stepTwo = _multiplyMatrix(stepOne, [
     [cosA, sinA, 0],
     [-sinA, cosA, 0],
     [0, 0, 1]
   ]);
+
+  return moveDrawing(stepTwo, posX, posY);
 }

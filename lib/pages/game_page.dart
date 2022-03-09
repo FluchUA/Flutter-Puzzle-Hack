@@ -1,6 +1,9 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_canvas/game_controller.dart';
 import 'package:flutter_canvas/objects/game_block/game_block_painter.dart';
+import 'package:flutter_canvas/utils/common_values_model.dart';
+import 'package:flutter_canvas/utils/game_controller.dart';
 import 'package:flutter_canvas/widgets/block_custom_paint_widget.dart';
 
 class GamePage extends StatefulWidget {
@@ -20,16 +23,20 @@ class _GamePageState extends State<GamePage>
   @override
   void initState() {
     super.initState();
+    final commonValuesModel = CommonValuesModel.instance;
+    commonValuesModel.gearCircumference = 2 * pi * commonValuesModel.gearRadius;
+
     _gameController.init(nTiles: widget.nTiles);
     _gameController.winCallback = _showDialog;
-    _streamUpdate = Stream.periodic(const Duration(milliseconds: 10), (x) => x);
+    _streamUpdate = Stream.periodic(
+        Duration(milliseconds: commonValuesModel.updateTimerMS), (x) => x);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 30, 51, 30),
+        backgroundColor: Colors.black,
         actions: [
           IconButton(
             onPressed: () => _gameController.shuffleTiles(),
@@ -65,7 +72,7 @@ class _GamePageState extends State<GamePage>
                 stream: _streamUpdate,
                 builder: (_, __) {
                   return Container(
-                    color: const Color.fromARGB(255, 59, 100, 60),
+                    color: Colors.black,
                     child: Stack(
                       children: _gameController.gameBlocks
                           .map(
