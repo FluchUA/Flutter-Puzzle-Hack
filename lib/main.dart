@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_canvas/pages/game_page.dart';
+import 'package:flutter_canvas/pages/main_menu_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,8 +11,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter Canvas',
-      home: GamePage(),
+      home: MainMenuPage(),
     );
   }
 }

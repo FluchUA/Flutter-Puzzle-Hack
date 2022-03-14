@@ -1,23 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_canvas/widgets/block_custom_paint_arguments.dart';
+import 'package:flutter_canvas/painters/game_block_painter.dart';
 
-class BlockCustomPaintWidget extends StatefulWidget {
-  const BlockCustomPaintWidget({required this.gameBlockPainterArg, Key? key})
+class BlockCustomPaintWidget extends StatelessWidget {
+  const BlockCustomPaintWidget({required this.gameBlockPainter, Key? key})
       : super(key: key);
 
-  final BlockCustomPaintArguments gameBlockPainterArg;
+  final GameBlockPainter? gameBlockPainter;
 
-  @override
-  _BlockCustomPaintWidgetState createState() => _BlockCustomPaintWidgetState();
-}
-
-class _BlockCustomPaintWidgetState extends State<BlockCustomPaintWidget> {
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: CustomPaint(
-        painter: widget.gameBlockPainterArg.gameBlockPainter,
-      ),
-    );
+    return RepaintBoundary(child: CustomPaint(painter: gameBlockPainter));
   }
 }
