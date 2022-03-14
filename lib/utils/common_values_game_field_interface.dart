@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class CommonValuesGameFieldInterface {
@@ -6,7 +7,7 @@ class CommonValuesGameFieldInterface {
   static final CommonValuesGameFieldInterface instance =
       CommonValuesGameFieldInterface._();
 
-  double screenOffset = 80;
+  double screenOffset = kIsWeb ? 120 : 70;
 
   /// The size of the playing field, in blocks and double value
   int sizeFieldInBlocks = 3;
@@ -221,7 +222,7 @@ class CommonValuesGameFieldInterface {
 
   void resetValues() {
     sizeFieldInBlocks = 3;
-    screenOffset = 80;
+    screenOffset = kIsWeb ? 120 : 70;
 
     fieldSize = 0;
 
