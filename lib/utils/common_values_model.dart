@@ -10,18 +10,19 @@ class CommonValuesModel {
   double spaceBetweenBlocks = 8;
   double scale = 1;
   double blurSigma1 = 1;
+  double blurSigma2 = 2;
   double blurSigma4 = 4;
   double blurSigma8 = 8;
 
   /// Base skeleton
   double baseSkeletonWallRadius = 35;
-  double baseSkeletonWallEdgeLineSize = 4;
+  double baseSkeletonWallEdgeStrokeSize = 4;
   double baseSkeletonRadius = 55;
-  double baseSkeletonLineSize = 6;
+  double baseSkeletonStrokeSize = 6;
   double baseSkeletonBeamsRadius = 8;
   double baseGearMountRadius = 6;
   double additionalBaseGearMountRadius = 4;
-  double additionalBaseGearMountLineSize = 2;
+  double additionalBaseGearMountStrokeSize = 2;
 
   final baseSkeletonWallColor = const Color.fromARGB(255, 12, 8, 7);
   final baseSkeletonCirclesColor = const Color.fromARGB(255, 6, 3, 2);
@@ -33,9 +34,9 @@ class CommonValuesModel {
 
   /// Base gear
   double gearRadius = 24;
-  double gearLineSize = 3;
+  double gearStrokeSize = 3;
   double gearBaseRadius = 10;
-  double gearTeethSize = 4;
+  double gearTeethStrokeSize = 4;
 
   double gearTeethNumber = 24;
 
@@ -45,7 +46,7 @@ class CommonValuesModel {
 
   /// Electronic dial
   double segmentLength = 12;
-  double segmentLineSize = 3;
+  double segmentStrokeSize = 3;
 
   final inactiveSegmentColor = const Color.fromARGB(255, 59, 54, 53);
   final activeSegmentColor = const Color.fromARGB(255, 255, 255, 255);
@@ -80,26 +81,27 @@ class CommonValuesModel {
 
     /// Base skeleton
     baseSkeletonWallRadius *= scaleValue;
-    baseSkeletonWallEdgeLineSize *= scaleValue;
+    baseSkeletonWallEdgeStrokeSize *= scaleValue;
     baseSkeletonRadius *= scaleValue;
-    baseSkeletonLineSize *= scaleValue;
+    baseSkeletonStrokeSize *= scaleValue;
     baseSkeletonBeamsRadius *= scaleValue;
     baseGearMountRadius *= scaleValue;
     additionalBaseGearMountRadius *= scaleValue;
-    additionalBaseGearMountLineSize *= scaleValue;
+    additionalBaseGearMountStrokeSize *= scaleValue;
 
     /// Gear
     gearRadius *= scaleValue;
-    gearLineSize *= scaleValue;
+    gearStrokeSize *= scaleValue;
     gearBaseRadius *= scaleValue;
-    gearTeethSize *= scaleValue;
+    gearTeethStrokeSize *= scaleValue;
     gearCircumference *= scaleValue;
 
     /// Electronic dial
     segmentLength *= scaleValue;
-    segmentLineSize *= scaleValue;
+    segmentStrokeSize *= scaleValue;
 
     blurSigma1 *= scaleValue;
+    blurSigma2 *= scaleValue;
     blurSigma4 *= scaleValue;
     blurSigma8 *= scaleValue;
   }

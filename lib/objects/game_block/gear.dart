@@ -30,9 +30,9 @@ class Gear {
     for (var i = 0.0; i < 6.283; i += delta) {
       points.add([
         posX +
-            (commonlValues.gearTeethSize + commonlValues.gearRadius) * cos(i),
+            (commonlValues.gearTeethStrokeSize + commonlValues.gearRadius) * cos(i),
         posY +
-            (commonlValues.gearTeethSize + commonlValues.gearRadius) * sin(i),
+            (commonlValues.gearTeethStrokeSize + commonlValues.gearRadius) * sin(i),
         1,
       ]);
 

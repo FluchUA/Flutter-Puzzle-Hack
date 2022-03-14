@@ -1,8 +1,9 @@
 import 'dart:math';
 
+import 'package:flutter_canvas/objects/electronic_dial.dart';
 import 'package:flutter_canvas/objects/game_block/base_skeleton.dart';
-import 'package:flutter_canvas/objects/game_block/electronic_dial.dart';
 import 'package:flutter_canvas/objects/game_block/gear.dart';
+import 'package:flutter_canvas/objects/particles_layer/particles_layer.dart';
 import 'package:flutter_canvas/utils/common_values_model.dart';
 import 'package:flutter_canvas/utils/multiply_matrix.dart';
 
@@ -19,7 +20,9 @@ class GameBlock {
   double posX;
   double posY;
   bool isChecked = false;
-  final commonValues = CommonValuesModel.instance;
+  int alpha = 255;
+  final commonBlockValues = CommonValuesModel.instance;
+  final particlesLayer = ParticlesLayer.instance;
   List<List<double>> sceletonPoints = [];
   List<List<double>> gearLeftTopPoints = [];
   List<List<double>> gearRightTopPoints = [];
@@ -34,39 +37,39 @@ class GameBlock {
     double fieldPosX,
     double fieldPosY,
   ) {
-    sceletonPoints =
-        scaleDrawing(sceletonPoints, commonValues.scale, fieldPosX, fieldPosY);
+    sceletonPoints = scaleDrawing(
+        sceletonPoints, commonBlockValues.scale, fieldPosX, fieldPosY);
     sceletonPoints = moveDrawing(sceletonPoints, shiftX, shiftY);
 
     /// Gear
     gearLeftTopPoints = scaleDrawing(
-        gearLeftTopPoints, commonValues.scale, fieldPosX, fieldPosY);
+        gearLeftTopPoints, commonBlockValues.scale, fieldPosX, fieldPosY);
     gearLeftTopPoints = moveDrawing(gearLeftTopPoints, shiftX, shiftY);
 
     gearRightTopPoints = scaleDrawing(
-        gearRightTopPoints, commonValues.scale, fieldPosX, fieldPosY);
+        gearRightTopPoints, commonBlockValues.scale, fieldPosX, fieldPosY);
     gearRightTopPoints = moveDrawing(gearRightTopPoints, shiftX, shiftY);
 
     gearLeftBottomPoints = scaleDrawing(
-        gearLeftBottomPoints, commonValues.scale, fieldPosX, fieldPosY);
+        gearLeftBottomPoints, commonBlockValues.scale, fieldPosX, fieldPosY);
     gearLeftBottomPoints = moveDrawing(gearLeftBottomPoints, shiftX, shiftY);
 
     gearRightBottomPoints = scaleDrawing(
-        gearRightBottomPoints, commonValues.scale, fieldPosX, fieldPosY);
+        gearRightBottomPoints, commonBlockValues.scale, fieldPosX, fieldPosY);
     gearRightBottomPoints = moveDrawing(gearRightBottomPoints, shiftX, shiftY);
 
     /// Electronic Dial
-    electronicDialLeftPoints = scaleDrawing(
-        electronicDialLeftPoints, commonValues.scale, fieldPosX, fieldPosY);
+    electronicDialLeftPoints = scaleDrawing(electronicDialLeftPoints,
+        commonBlockValues.scale, fieldPosX, fieldPosY);
     electronicDialLeftPoints =
         moveDrawing(electronicDialLeftPoints, shiftX, shiftY);
 
-    electronicDialRightPoints = scaleDrawing(
-        electronicDialRightPoints, commonValues.scale, fieldPosX, fieldPosY);
+    electronicDialRightPoints = scaleDrawing(electronicDialRightPoints,
+        commonBlockValues.scale, fieldPosX, fieldPosY);
     electronicDialRightPoints =
         moveDrawing(electronicDialRightPoints, shiftX, shiftY);
 
-    final halfSizeBlock = commonValues.sizeBlock * 0.5;
+    final halfSizeBlock = commonBlockValues.sizeBlock * 0.5;
     posX = sceletonPoints[0][0] - halfSizeBlock;
     posY = sceletonPoints[0][1] - halfSizeBlock;
   }
@@ -81,6 +84,10 @@ class GameBlock {
   }
 
   void move(double shiftX, double shiftY) {
+    final oldSceletonPosX = sceletonPoints[0][0];
+    final oldSceletonPosY = sceletonPoints[0][1];
+
+    // print(posX);
     sceletonPoints = moveDrawing(sceletonPoints, shiftX, shiftY);
 
     /// Gear
@@ -89,16 +96,52 @@ class GameBlock {
     gearLeftBottomPoints = moveDrawing(gearLeftBottomPoints, shiftX, shiftY);
     gearRightBottomPoints = moveDrawing(gearRightBottomPoints, shiftX, shiftY);
 
+    /// Generate particles
+    final currentX = (oldSceletonPosX - sceletonPoints[0][0]).abs();
+    final currentY = (oldSceletonPosY - sceletonPoints[0][1]).abs();
+    if ((currentX > 1 && currentX < 4) || (currentY > 1 && currentY < 4)) {
+      double shiftHorizontal = 0;
+      double shiftVertical = 0;
+
+      if (shiftX == 0) {
+        shiftVertical = commonBlockValues.sizeBlock * 0.5;
+      } else {
+        shiftHorizontal = commonBlockValues.sizeBlock * 0.5;
+      }
+
+      particlesLayer.createParticle(
+        sceletonPoints[0][0] + shiftVertical,
+        sceletonPoints[0][1] + shiftHorizontal,
+        oldSceletonPosX - sceletonPoints[0][0],
+        oldSceletonPosY - sceletonPoints[0][1],
+      );
+
+      particlesLayer.createParticle(
+        sceletonPoints[0][0] - shiftVertical,
+        sceletonPoints[0][1] - shiftHorizontal,
+        oldSceletonPosX - sceletonPoints[0][0],
+        oldSceletonPosY - sceletonPoints[0][1],
+      );
+    }
+
     /// Gear rotate
     double gearRotateAngle = 0;
     if (shiftX == 0) {
-      gearRotateAngle = (shiftY * 2) / commonValues.gearCircumference;
+      gearRotateAngle = (shiftY * 2) / commonBlockValues.gearCircumference;
 
       _rotateGear(sin(gearRotateAngle), cos(gearRotateAngle), false);
+
+      alpha -= shiftY.toInt().abs() * 2;
     } else {
-      gearRotateAngle = (shiftX * 2) / commonValues.gearCircumference;
+      gearRotateAngle = (shiftX * 2) / commonBlockValues.gearCircumference;
 
       _rotateGear(sin(gearRotateAngle), cos(gearRotateAngle), true);
+
+      alpha -= shiftX.toInt().abs() * 2;
+    }
+
+    if (alpha < 0) {
+      alpha = 0;
     }
 
     /// Electric dial
@@ -115,7 +158,7 @@ class GameBlock {
 
     sceletonPoints = skeleton.calculatePoints(posX, posY);
 
-    final halfSB = commonValues.sizeBlock * 0.5;
+    final halfSB = commonBlockValues.sizeBlock * 0.5;
     double angleRadian = 0.785398; // 45
     const maxAngleRadian = 6.283;
     final randRadian = Random();
@@ -193,8 +236,8 @@ class GameBlock {
     );
 
     /// Electronic Dial
-    double halfSegmentSize =
-        commonValues.segmentLength * 0.5 + commonValues.segmentLineSize * 2;
+    double halfSegmentSize = commonBlockValues.segmentLength * 0.5 +
+        commonBlockValues.segmentStrokeSize * 2;
     electronicDialLeftPoints = electronicDial.calculatePoints(
       posX + halfSB - halfSegmentSize,
       posY + halfSB,

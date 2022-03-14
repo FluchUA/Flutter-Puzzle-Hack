@@ -9,6 +9,7 @@ class GameBlockPainter extends CustomPainter {
     blockPosX = gameBlock.posX;
     blockPosY = gameBlock.posY;
     blockValue = gameBlock.value;
+    alpha = gameBlock.alpha;
   }
 
   GameBlock gameBlock;
@@ -16,6 +17,7 @@ class GameBlockPainter extends CustomPainter {
   ///
   double blockPosX = 0;
   double blockPosY = 0;
+  int alpha = 255;
   int blockValue = 0;
 
   @override
@@ -41,7 +43,8 @@ class GameBlockPainter extends CustomPainter {
   bool shouldRepaint(GameBlockPainter oldDelegate) {
     return oldDelegate.blockPosX != blockPosX ||
         oldDelegate.blockPosY != blockPosY ||
-        oldDelegate.blockValue != blockValue;
+        oldDelegate.blockValue != blockValue ||
+        oldDelegate.alpha != alpha;
   }
 
   void _baseSkeletonDraw(
@@ -51,7 +54,7 @@ class GameBlockPainter extends CustomPainter {
     double centerPosX,
     double centerPosY,
   ) {
-    final commonValues = gameBlock.commonValues;
+    final commonValues = gameBlock.commonBlockValues;
     final centerOffset = Offset(centerPosX, centerPosY);
     final maskFilterBlur1 =
         ui.MaskFilter.blur(BlurStyle.normal, commonValues.blurSigma1);
@@ -63,7 +66,7 @@ class GameBlockPainter extends CustomPainter {
     for (var i = 1; i < 8; i += 2) {
       paint
         ..color = commonValues.baseSkeletonBeamsColor
-        ..strokeWidth = commonValues.baseSkeletonLineSize
+        ..strokeWidth = commonValues.baseSkeletonStrokeSize
         ..maskFilter = null;
 
       canvas.drawLine(
@@ -75,7 +78,7 @@ class GameBlockPainter extends CustomPainter {
       /// Blur
       paint
         ..color = commonValues.blurbaseBeamsColor
-        ..strokeWidth = commonValues.baseSkeletonLineSize * 0.4
+        ..strokeWidth = commonValues.baseSkeletonStrokeSize * 0.4
         ..maskFilter = maskFilterBlur1;
 
       canvas.drawLine(
@@ -96,27 +99,27 @@ class GameBlockPainter extends CustomPainter {
     paint
       ..style = PaintingStyle.stroke
       ..color = commonValues.baseSkeletonCirclesColor
-      ..strokeWidth = commonValues.baseSkeletonWallEdgeLineSize;
+      ..strokeWidth = commonValues.baseSkeletonWallEdgeStrokeSize;
 
     canvas.drawCircle(centerOffset, commonValues.baseSkeletonWallRadius, paint);
 
     /// Edge blur
     paint
       ..color = commonValues.blurbaseSkeletonCirclesColor
-      ..strokeWidth = commonValues.baseSkeletonWallEdgeLineSize * 0.2
+      ..strokeWidth = commonValues.baseSkeletonWallEdgeStrokeSize * 0.2
       ..maskFilter = maskFilterBlur1;
     canvas.drawCircle(centerOffset, commonValues.baseSkeletonWallRadius, paint);
 
     /// Base Skeleton Circle
     paint
       ..color = commonValues.baseSkeletonCirclesColor
-      ..strokeWidth = commonValues.baseSkeletonLineSize;
+      ..strokeWidth = commonValues.baseSkeletonStrokeSize;
     canvas.drawCircle(centerOffset, commonValues.baseSkeletonRadius, paint);
 
     /// Circle blur
     paint
       ..color = commonValues.blurbaseSkeletonCirclesColor
-      ..strokeWidth = commonValues.baseSkeletonLineSize * 0.2;
+      ..strokeWidth = commonValues.baseSkeletonStrokeSize * 0.2;
     canvas.drawCircle(centerOffset, commonValues.baseSkeletonRadius, paint);
 
     paint
@@ -137,7 +140,7 @@ class GameBlockPainter extends CustomPainter {
     paint
       ..color = commonValues.additionalBaseGearMountColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = commonValues.additionalBaseGearMountLineSize;
+      ..strokeWidth = commonValues.additionalBaseGearMountStrokeSize;
 
     /// Additional gear mount
     for (var i = 9; i < 13; i++) {
@@ -150,10 +153,10 @@ class GameBlockPainter extends CustomPainter {
   }
 
   void _gearDraw(List<List<double>> points, Canvas canvas, Paint paint) {
-    final commonValues = gameBlock.commonValues;
+    final commonValues = gameBlock.commonBlockValues;
 
     paint
-      ..strokeWidth = commonValues.gearLineSize
+      ..strokeWidth = commonValues.gearStrokeSize
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..color = commonValues.gearTeetColor;
@@ -196,12 +199,12 @@ class GameBlockPainter extends CustomPainter {
   }
 
   void _electronicDialDraw(Canvas canvas, Paint paint) {
-    final commonValues = gameBlock.commonValues;
+    final commonValues = gameBlock.commonBlockValues;
     final pointsL = gameBlock.electronicDialLeftPoints;
     final pointsR = gameBlock.electronicDialRightPoints;
     paint
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = commonValues.segmentLineSize;
+      ..strokeWidth = commonValues.segmentStrokeSize;
 
     int leftValue = 0;
     int rightValue = 0;
@@ -220,36 +223,9 @@ class GameBlockPainter extends CustomPainter {
 
     int currentSegment = 0;
     for (var i = 0; i < pointsL.length; i += 2) {
-      /// Blur
-      if (commonValues.activeSegmentArray[leftValue][currentSegment]) {
-        /// Blur 1
-        paint
-          ..color = commonValues.blurSegmentColor
-          ..maskFilter = maskFilterBlur8;
-
-        canvas.drawLine(
-          Offset(pointsL[i][0], pointsL[i][1]),
-          Offset(pointsL[i + 1][0], pointsL[i + 1][1]),
-          paint,
-        );
-
-        /// Blur 2
-        paint.maskFilter = maskFilterBlur4;
-
-        canvas.drawLine(
-          Offset(pointsL[i][0], pointsL[i][1]),
-          Offset(pointsL[i + 1][0], pointsL[i + 1][1]),
-          paint,
-        );
-
-        paint
-          ..maskFilter = null
-          ..color = commonValues.activeSegmentColor;
-      } else {
-        paint
-          ..maskFilter = null
-          ..color = commonValues.inactiveSegmentColor;
-      }
+      paint
+        ..maskFilter = null
+        ..color = commonValues.inactiveSegmentColor;
 
       canvas.drawLine(
         Offset(pointsL[i][0], pointsL[i][1]),
@@ -257,16 +233,58 @@ class GameBlockPainter extends CustomPainter {
         paint,
       );
 
+      /// Blur
+      if (commonValues.activeSegmentArray[leftValue][currentSegment]) {
+        /// Blur 1
+        paint
+          ..color = commonValues.blurSegmentColor.withAlpha(gameBlock.alpha)
+          ..maskFilter = maskFilterBlur8;
+
+        canvas.drawLine(
+          Offset(pointsL[i][0], pointsL[i][1]),
+          Offset(pointsL[i + 1][0], pointsL[i + 1][1]),
+          paint,
+        );
+
+        /// Blur 2
+        paint.maskFilter = maskFilterBlur4;
+
+        canvas.drawLine(
+          Offset(pointsL[i][0], pointsL[i][1]),
+          Offset(pointsL[i + 1][0], pointsL[i + 1][1]),
+          paint,
+        );
+
+        paint
+          ..maskFilter = null
+          ..color = commonValues.activeSegmentColor.withAlpha(gameBlock.alpha);
+
+        canvas.drawLine(
+          Offset(pointsL[i][0], pointsL[i][1]),
+          Offset(pointsL[i + 1][0], pointsL[i + 1][1]),
+          paint,
+        );
+      }
       currentSegment++;
     }
 
     currentSegment = 0;
     for (var i = 0; i < pointsR.length; i += 2) {
+      paint
+        ..maskFilter = null
+        ..color = commonValues.inactiveSegmentColor;
+
+      canvas.drawLine(
+        Offset(pointsR[i][0], pointsR[i][1]),
+        Offset(pointsR[i + 1][0], pointsR[i + 1][1]),
+        paint,
+      );
+
       /// Blur
       if (commonValues.activeSegmentArray[rightValue][currentSegment]) {
         /// Blur 1
         paint
-          ..color = commonValues.blurSegmentColor
+          ..color = commonValues.blurSegmentColor.withAlpha(gameBlock.alpha)
           ..maskFilter = maskFilterBlur8;
 
         canvas.drawLine(
@@ -286,18 +304,14 @@ class GameBlockPainter extends CustomPainter {
 
         paint
           ..maskFilter = null
-          ..color = commonValues.activeSegmentColor;
-      } else {
-        paint
-          ..maskFilter = null
-          ..color = commonValues.inactiveSegmentColor;
-      }
+          ..color = commonValues.activeSegmentColor.withAlpha(gameBlock.alpha);
 
-      canvas.drawLine(
-        Offset(pointsR[i][0], pointsR[i][1]),
-        Offset(pointsR[i + 1][0], pointsR[i + 1][1]),
-        paint,
-      );
+        canvas.drawLine(
+          Offset(pointsR[i][0], pointsR[i][1]),
+          Offset(pointsR[i + 1][0], pointsR[i + 1][1]),
+          paint,
+        );
+      }
 
       currentSegment++;
     }

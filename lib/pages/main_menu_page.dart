@@ -6,56 +6,83 @@ class MainMenuPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Container(
-          color: const Color.fromARGB(255, 59, 100, 60),
+    return Theme(
+      data: Theme.of(context).copyWith(
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+              primary: const Color.fromARGB(255, 177, 100, 0),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10)),
+        ),
+      ),
+      child: Scaffold(
+        body: Container(
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+                colors: [
+                  Color.fromARGB(255, 0, 0, 0),
+                  Color.fromARGB(255, 73, 0, 0),
+                ],
+                begin: FractionalOffset(0.0, 0.0),
+                end: FractionalOffset(1.0, 0.0),
+                stops: [0.0, 1.0],
+                tileMode: TileMode.clamp),
+          ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                'Number of tiles',
-                style: TextStyle(fontSize: 32, color: Colors.black),
+                'Puzzle',
+                style: TextStyle(
+                  fontSize: 72,
+                  color: Color.fromARGB(255, 255, 184, 62),
+                  fontWeight: FontWeight.bold,
+                  shadows: <Shadow>[
+                    Shadow(
+                      offset: Offset(20, 20),
+                      blurRadius: 8.0,
+                      color: Color.fromARGB(255, 0, 0, 0),
+                    ),
+                  ],
+                  fontFamily: 'Georgia',
+                ),
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: () => _openGamePage(8, context),
-                    child: const Text('8'),
+
+              /// 8 tiles button
+              SizedBox(
+                width: 200,
+                child: ElevatedButton(
+                  onPressed: () => _openGamePage(8, context),
+                  child: const Text(
+                    'Tiles: 8',
+                    style: TextStyle(
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
-                  const SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: () => _openGamePage(15, context),
-                    child: const Text('15'),
-                  ),
-                  const SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: () => _openGamePage(24, context),
-                    child: const Text('24'),
-                  ),
-                ],
+                ),
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: () => _openGamePage(35, context),
-                    child: const Text('35'),
+
+              /// 15 tiles button
+              SizedBox(
+                width: 200,
+                child: ElevatedButton(
+                  onPressed: () => _openGamePage(15, context),
+                  child: const Text(
+                    'Tiles: 15',
+                    style: TextStyle(
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
-                  const SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: () => _openGamePage(48, context),
-                    child: const Text('48'),
-                  ),
-                  const SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: () => _openGamePage(63, context),
-                    child: const Text('63'),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
