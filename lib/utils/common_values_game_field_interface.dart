@@ -6,7 +6,7 @@ class CommonValuesGameFieldInterface {
   static final CommonValuesGameFieldInterface instance =
       CommonValuesGameFieldInterface._();
 
-  double screenOffset = 120;
+  double screenOffset = 80;
 
   /// The size of the playing field, in blocks and double value
   int sizeFieldInBlocks = 3;
@@ -221,7 +221,7 @@ class CommonValuesGameFieldInterface {
 
   void resetValues() {
     sizeFieldInBlocks = 3;
-    screenOffset = 120;
+    screenOffset = 80;
 
     fieldSize = 0;
 
