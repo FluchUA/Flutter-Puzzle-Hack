@@ -166,7 +166,5 @@ class DialLayer {
         movesValue = stringValue;
       }
     }
-
-    final aaa = 10;
   }
 }
