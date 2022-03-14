@@ -1,8 +1,13 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:flutter_canvas/objects/dial_layer/dial_layer.dart';
 import 'package:flutter_canvas/objects/game_block/game_block.dart';
+import 'package:flutter_canvas/objects/interface/game_field_interface.dart';
+import 'package:flutter_canvas/objects/particles_layer/particles_layer.dart';
+import 'package:flutter_canvas/objects/valves_layer/valves_layer.dart';
 import 'package:flutter_canvas/positions_model.dart';
+import 'package:flutter_canvas/utils/common_values_game_field_interface.dart';
+import 'package:flutter_canvas/utils/common_values_model.dart';
 import 'package:flutter_canvas/widgets/block_custom_paint_widget.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -15,28 +20,21 @@ enum ShuffleDirection {
 
 class GameController {
   Function(int nTiles, int nMoves)? winCallback;
+  Function()? exitCallback;
 
-  /// Block size and padding between them
-  double blockSize = 125;
-  double spaceBetweenBlocks = 8;
+  ///
+  final gameModelValues = CommonValuesModel.instance;
+  final interfaceValues = CommonValuesGameFieldInterface.instance;
 
-  double screenOffset = 20;
-  double scaleKoef = 1;
-
-  /// The size of the playing field, in blocks and double value
-  int sizeFieldInBlocks = 3;
-  double fieldSize = 0;
-
-  double gameFieldPosX = 0;
-  double gameFieldPosY = 0;
-
-  double oldScreenSizeW = 0;
-  double oldScreenSizeH = 0;
+  final gameFieldInterface = GameFieldInterface();
+  final valvesLayer = ValvesLayer();
+  final dialLayer = DialLayer();
+  final particlesLayer = ParticlesLayer.instance;
 
   /// Logic matrix, to determine the positions of blocks in the game
   List<List<int>> gameField = [];
 
-  /// Game block object
+  /// Game block objects
   final List<GameBlock> gameBlocks = [];
 
   /// Widget that includes canvas
@@ -62,31 +60,58 @@ class GameController {
   bool upMove = false;
   bool downMove = false;
 
+  bool controlNotBlocked = true;
+
+  final movingStep = 0.2;
+  bool moving = false;
+  bool leftMoving = false;
+  bool rightMoving = false;
+  bool upMoving = false;
+  bool downMoving = false;
+  final List<GameBlock> randShuffleGameBlocks = [];
+
+  double fieldSizeValue = 0;
+
+  /// Shuffle animation
+  int currentShuffleIndex = 0;
+  double currnetShuffleTimerStep = 0;
+  double currentShaffleTimer = 0;
+
   void init({int nTiles = 15}) {
-    sizeFieldInBlocks = sqrt(nTiles + 1).toInt();
+    interfaceValues.sizeFieldInBlocks = sqrt(nTiles + 1).toInt();
 
     /// Number of blocks per field
-    final maxBlocks = sizeFieldInBlocks * sizeFieldInBlocks - 1;
+    final maxBlocks =
+        interfaceValues.sizeFieldInBlocks * interfaceValues.sizeFieldInBlocks -
+            1;
 
     /// Field size calculation by default values
-    fieldSize = (blockSize + spaceBetweenBlocks) * sizeFieldInBlocks +
-        spaceBetweenBlocks;
+    interfaceValues.fieldSize =
+        (gameModelValues.sizeBlock + gameModelValues.spaceBetweenBlocks) *
+                interfaceValues.sizeFieldInBlocks +
+            gameModelValues.spaceBetweenBlocks;
+
+    fieldSizeValue = interfaceValues.fieldSize;
+
+    ///
+    gameFieldInterface.calculatePoints();
+    valvesLayer.calculatePoints();
+    dialLayer.calculatePoints();
 
     /// Creating a two-dimensional array to determine the positions of all blocks
-    gameField = List.generate(
-        sizeFieldInBlocks, (_) => List.generate(sizeFieldInBlocks, (_) => 0));
+    gameField = List.generate(interfaceValues.sizeFieldInBlocks,
+        (_) => List.generate(interfaceValues.sizeFieldInBlocks, (_) => 0));
 
     int currentBlockValue = 1;
-    final blockSizeWithSpace = blockSize + spaceBetweenBlocks;
+    final blockSizeWithSpace =
+        gameModelValues.sizeBlock + gameModelValues.spaceBetweenBlocks;
 
     /// Creation of game blocks
     for (var i = 0; i < gameField.length; i++) {
       for (var j = 0; j < gameField[i].length; j++) {
         final gameB = GameBlock(
-          sizeBlock: blockSize,
-          posX: blockSizeWithSpace * j + spaceBetweenBlocks,
-          posY: blockSizeWithSpace * i + spaceBetweenBlocks,
-          color: Colors.green[100 * (j + 1)]!,
+          posX: blockSizeWithSpace * j + gameModelValues.spaceBetweenBlocks,
+          posY: blockSizeWithSpace * i + gameModelValues.spaceBetweenBlocks,
           value: currentBlockValue,
         );
 
@@ -101,21 +126,40 @@ class GameController {
       }
     }
 
+    /// Set nTiles
+    dialLayer.setValue(gameField.length * gameField.length, true);
+
     ///
-    shuffleTiles();
+    startShuffle();
   }
 
   /// Screen touch
   void onDown(double tapX, double tapY) {
+    moving = false;
+
+    ///
+    if (rightMoving) {
+      _rightMoving();
+    } else if (leftMoving) {
+      _leftMoving();
+    } else if (downMoving) {
+      _downMoving();
+    } else if (upMoving) {
+      _upMoving();
+    }
+
     tapPosX = tapX;
     tapPosY = tapY;
 
     ///
-    if (notEndGame) {
+    valvesLayer.valveHit(tapX, tapY);
+
+    ///
+    if (notEndGame && controlNotBlocked) {
       /// Finding the block the cursor is on
       /// block search by value in matrix
       for (var m = 0; m < gameBlocks.length; m++) {
-        if (gameBlocks[m].blockHit(tapX, tapY, blockSize)) {
+        if (gameBlocks[m].blockHit(tapX, tapY, gameModelValues.sizeBlock)) {
           /// Checking for possible block movement
           for (var i = 0; i < gameField.length; i++) {
             for (var j = 0; j < gameField[i].length; j++) {
@@ -174,49 +218,63 @@ class GameController {
         movePositions.isNotEmpty) {
       ///
       if (horizontalMove) {
-        ///
         final closerToEnd = movePositions[0].gameBlock.posX >
-            movePositions[0].startX + (blockSize + spaceBetweenBlocks) * 0.2;
+            movePositions[0].startX +
+                (gameModelValues.sizeBlock +
+                        gameModelValues.spaceBetweenBlocks) *
+                    0.2;
         final closerToStart = movePositions[0].gameBlock.posX <
-            movePositions[0].startX - (blockSize + spaceBetweenBlocks) * 0.2;
+            movePositions[0].startX -
+                (gameModelValues.sizeBlock +
+                        gameModelValues.spaceBetweenBlocks) *
+                    0.2;
 
         ///
         if ((closerToStart && leftMove) || (closerToEnd && rightMove)) {
-          for (final gBlockPos in movePositions) {
-            gBlockPos.gameBlock
-                .move(gBlockPos.endX - gBlockPos.gameBlock.posX, 0);
-            gBlockPos.gameBlock.posX = gBlockPos.endX;
-          }
+          rightMoving = true;
+          moving = true;
         } else {
-          for (final gBlockPos in movePositions) {
-            gBlockPos.gameBlock
-                .move(gBlockPos.startX - gBlockPos.gameBlock.posX, 0);
-            gBlockPos.gameBlock.posX = gBlockPos.startX;
-          }
+          leftMoving = true;
+          moving = true;
         }
       } else if (verticalMove) {
         ///
         final closerToEnd = movePositions[0].gameBlock.posY >
-            movePositions[0].startY + (blockSize + spaceBetweenBlocks) * 0.2;
+            movePositions[0].startY +
+                (gameModelValues.sizeBlock +
+                        gameModelValues.spaceBetweenBlocks) *
+                    0.2;
         final closerToStart = movePositions[0].gameBlock.posY <
-            movePositions[0].startY - (blockSize + spaceBetweenBlocks) * 0.2;
+            movePositions[0].startY -
+                (gameModelValues.sizeBlock +
+                        gameModelValues.spaceBetweenBlocks) *
+                    0.2;
 
         ///
         if ((closerToStart && upMove) || (closerToEnd && downMove)) {
-          for (final gBlockPos in movePositions) {
-            gBlockPos.gameBlock
-                .move(0, gBlockPos.endY - gBlockPos.gameBlock.posY);
-            gBlockPos.gameBlock.posY = gBlockPos.endY;
-          }
+          downMoving = true;
+          moving = true;
         } else {
-          for (final gBlockPos in movePositions) {
-            gBlockPos.gameBlock
-                .move(0, gBlockPos.startY - gBlockPos.gameBlock.posY);
-            gBlockPos.gameBlock.posY = gBlockPos.startY;
-          }
+          upMoving = true;
+          moving = true;
         }
       }
+    }
 
+    valvesLayer.leftValveIsHit = false;
+    valvesLayer.rightValveIsHit = false;
+
+    if (!moving) {
+      _resetTapValues();
+    }
+  }
+
+  void _resetTapValues() {
+    ///
+    if (selectedBlockIndex != -1 &&
+        selectedBlockFieldIndexI != -1 &&
+        selectedBlockFieldIndexJ != -1 &&
+        movePositions.isNotEmpty) {
       ///
       if (gameBlocks[selectedBlockIndex].posX == movePositions[0].endX &&
           horizontalMove) {
@@ -237,6 +295,7 @@ class GameController {
         }
 
         nMoves++;
+        dialLayer.setValue(nMoves, false);
       } else if (gameBlocks[selectedBlockIndex].posY == movePositions[0].endY &&
           verticalMove) {
         ///
@@ -254,6 +313,7 @@ class GameController {
         }
 
         nMoves++;
+        dialLayer.setValue(nMoves, false);
       }
 
       _checkToWin();
@@ -270,6 +330,15 @@ class GameController {
     selectedBlockIndex = -1;
     selectedBlockFieldIndexI = -1;
     selectedBlockFieldIndexJ = -1;
+
+    valvesLayer.leftValveIsHit = false;
+    valvesLayer.rightValveIsHit = false;
+
+    moving = false;
+    leftMoving = false;
+    rightMoving = false;
+    upMoving = false;
+    downMoving = false;
   }
 
   /// Moving the cursor on the screen
@@ -372,57 +441,72 @@ class GameController {
 
     /// Determining the minimum size of one side of the screen
     double minLength = screenW > screenH ? screenH : screenW;
-    minLength -= screenOffset * 2;
+    minLength -= interfaceValues.screenOffset * 2;
 
     ///  If the size of one side of the screen has changed
-    if (screenW != oldScreenSizeW || screenH != oldScreenSizeH) {
-      scaleKoef = minLength / fieldSize;
-      fieldSize = minLength;
-      blockSize *= scaleKoef;
-      spaceBetweenBlocks *= scaleKoef;
+    if (screenW != interfaceValues.oldScreenSizeW ||
+        screenH != interfaceValues.oldScreenSizeH) {
+      final scale = minLength / interfaceValues.fieldSize;
+
+      interfaceValues.scaleUpdate(scale);
+      gameModelValues.scaleUpdate(scale);
+
+      interfaceValues.fieldSize = minLength;
 
       /// Recalculate the field size depending on the current screen size
       double newFieldPosX = 0;
       double newFieldPosY = 0;
 
       if (screenW > screenH) {
-        newFieldPosX = screenW * 0.5 - fieldSize * 0.5;
-        newFieldPosY = (screenH - fieldSize) * 0.5;
+        newFieldPosX = screenW * 0.5 - interfaceValues.fieldSize * 0.5;
+        newFieldPosY = (screenH - interfaceValues.fieldSize) * 0.5;
       } else {
-        newFieldPosX = (screenW - fieldSize) * 0.5;
-        newFieldPosY = screenH * 0.5 - fieldSize * 0.5;
+        newFieldPosX = (screenW - interfaceValues.fieldSize) * 0.5;
+        newFieldPosY = screenH * 0.5 - interfaceValues.fieldSize * 0.5;
       }
 
       /// Updating game models, shifting and scaling
       for (var i = 0; i < gameBlocks.length; i++) {
         gameBlocks[i].update(
-          newFieldPosX - gameFieldPosX,
-          newFieldPosY - gameFieldPosY,
-          gameFieldPosX,
-          gameFieldPosY,
-          scaleKoef,
+          newFieldPosX - interfaceValues.gameFieldPosX,
+          newFieldPosY - interfaceValues.gameFieldPosY,
+          interfaceValues.gameFieldPosX,
+          interfaceValues.gameFieldPosY,
         );
       }
 
-      gameFieldPosX = newFieldPosX;
-      gameFieldPosY = newFieldPosY;
+      final shiftFieldPosX = newFieldPosX - interfaceValues.gameFieldPosX;
+      final shiftFieldPosY = newFieldPosY - interfaceValues.gameFieldPosY;
 
-      oldScreenSizeW = screenW;
-      oldScreenSizeH = screenH;
+      /// Update game field interface
+      gameFieldInterface.update(shiftFieldPosX, shiftFieldPosY);
+
+      /// Update valves layer
+      valvesLayer.update(shiftFieldPosX, shiftFieldPosY);
+
+      /// Update dial layer
+      dialLayer.update(shiftFieldPosX, shiftFieldPosY);
+
+      interfaceValues.gameFieldPosX = newFieldPosX;
+      interfaceValues.gameFieldPosY = newFieldPosY;
+
+      interfaceValues.oldScreenSizeW = screenW;
+      interfaceValues.oldScreenSizeH = screenH;
     }
   }
 
   ///
-  void shuffleTiles() {
+  void _shuffleTiles() {
     nMoves = 0;
+    dialLayer.setValue(nMoves, false);
     notEndGame = true;
 
     int fieldEmptyBIndexI = 0;
     int fieldEmptyBIndexJ = 0;
 
     ///
-    final shuffleField = List.generate(
-        sizeFieldInBlocks, (_) => List.generate(sizeFieldInBlocks, (_) => 0));
+    final shuffleField = List.generate(interfaceValues.sizeFieldInBlocks,
+        (_) => List.generate(interfaceValues.sizeFieldInBlocks, (_) => 0));
 
     for (var i = 0; i < gameField.length; i++) {
       for (var j = 0; j < gameField[i].length; j++) {
@@ -436,7 +520,8 @@ class GameController {
     }
 
     /// Number of Shuffle
-    int maxBlocks = sizeFieldInBlocks * sizeFieldInBlocks;
+    int maxBlocks =
+        interfaceValues.sizeFieldInBlocks * interfaceValues.sizeFieldInBlocks;
     var randDirection = Random();
     var randNMovedB = Random();
     final directionsLength = ShuffleDirection.values.length;
@@ -445,7 +530,7 @@ class GameController {
     int emptyBIndexJ = fieldEmptyBIndexJ;
 
     ///
-    maxBlocks *= 2;
+    maxBlocks *= 4;
 
     ///
     for (var i = 0; i < maxBlocks; i++) {
@@ -589,7 +674,8 @@ class GameController {
 
   ///
   void _addMovedBlocks(int indexI, int indexJ) {
-    final shiftDistance = blockSize + spaceBetweenBlocks;
+    final shiftDistance =
+        gameModelValues.sizeBlock + gameModelValues.spaceBetweenBlocks;
 
     if (horizontalMove) {
       if (leftMove) {
@@ -598,9 +684,12 @@ class GameController {
           if (blockValue == 0) {
             break;
           }
-          final posX = gameFieldPosX + j * shiftDistance + spaceBetweenBlocks;
-          final posY =
-              gameFieldPosY + indexI * shiftDistance + spaceBetweenBlocks;
+          final posX = interfaceValues.gameFieldPosX +
+              j * shiftDistance +
+              gameModelValues.spaceBetweenBlocks;
+          final posY = interfaceValues.gameFieldPosY +
+              indexI * shiftDistance +
+              gameModelValues.spaceBetweenBlocks;
 
           final gBlock =
               gameBlocks.where((element) => element.value == blockValue).first;
@@ -618,9 +707,12 @@ class GameController {
           if (blockValue == 0) {
             break;
           }
-          final posX = gameFieldPosX + j * shiftDistance + spaceBetweenBlocks;
-          final posY =
-              gameFieldPosY + indexI * shiftDistance + spaceBetweenBlocks;
+          final posX = interfaceValues.gameFieldPosX +
+              j * shiftDistance +
+              gameModelValues.spaceBetweenBlocks;
+          final posY = interfaceValues.gameFieldPosY +
+              indexI * shiftDistance +
+              gameModelValues.spaceBetweenBlocks;
           final gBlock =
               gameBlocks.where((element) => element.value == blockValue).first;
           movePositions.add(PositionsModel(
@@ -639,9 +731,12 @@ class GameController {
           if (blockValue == 0) {
             break;
           }
-          final posX =
-              gameFieldPosX + indexJ * shiftDistance + spaceBetweenBlocks;
-          final posY = gameFieldPosY + i * shiftDistance + spaceBetweenBlocks;
+          final posX = interfaceValues.gameFieldPosX +
+              indexJ * shiftDistance +
+              gameModelValues.spaceBetweenBlocks;
+          final posY = interfaceValues.gameFieldPosY +
+              i * shiftDistance +
+              gameModelValues.spaceBetweenBlocks;
           final gBlock =
               gameBlocks.where((element) => element.value == blockValue).first;
           movePositions.add(PositionsModel(
@@ -658,9 +753,12 @@ class GameController {
           if (blockValue == 0) {
             break;
           }
-          final posX =
-              gameFieldPosX + indexJ * shiftDistance + spaceBetweenBlocks;
-          final posY = gameFieldPosY + i * shiftDistance + spaceBetweenBlocks;
+          final posX = interfaceValues.gameFieldPosX +
+              indexJ * shiftDistance +
+              gameModelValues.spaceBetweenBlocks;
+          final posY = interfaceValues.gameFieldPosY +
+              i * shiftDistance +
+              gameModelValues.spaceBetweenBlocks;
 
           final gBlock =
               gameBlocks.where((element) => element.value == blockValue).first;
@@ -697,5 +795,255 @@ class GameController {
         }
       }
     }
+  }
+
+  ///
+  void _updateEnergy() {
+    for (var i = 0; i < gameBlocks.length; i++) {
+      if (gameBlocks[i].alpha == 255) {
+        continue;
+      }
+
+      final delta = ((255 - gameBlocks[i].alpha) * 0.1).toInt();
+      gameBlocks[i].alpha += delta;
+
+      if (gameBlocks[i].alpha > 253) {
+        gameBlocks[i].alpha = 255;
+      }
+    }
+  }
+
+  void _updateValves() {
+    /// Left valve
+    if (valvesLayer.shuffleEnergy > 0 &&
+        (!valvesLayer.leftValveIsHit || !valvesLayer.leftNotBlockedValve)) {
+      valvesLayer.shuffleEnergy -=
+          valvesLayer.leftNotBlockedValve ? 0.02 : 0.01;
+
+      if (valvesLayer.shuffleEnergy <= 0) {
+        valvesLayer.shuffleEnergy = 0;
+        valvesLayer.leftNotBlockedValve = true;
+      }
+    }
+
+    if (valvesLayer.leftValveIsHit && valvesLayer.leftNotBlockedValve) {
+      valvesLayer.rotateLeftValve();
+      valvesLayer.shuffleEnergy += 0.05;
+
+      if (valvesLayer.shuffleEnergy >= 1) {
+        valvesLayer.shuffleEnergy = 1;
+        valvesLayer.leftNotBlockedValve = false;
+
+        startShuffle();
+      }
+    }
+
+    /// Right valve
+    if (valvesLayer.exitEnergy > 0 &&
+        (!valvesLayer.rightValveIsHit || !valvesLayer.rightNotBlockedValve)) {
+      valvesLayer.exitEnergy -= valvesLayer.rightNotBlockedValve ? 0.02 : 0.01;
+
+      if (valvesLayer.exitEnergy <= 0) {
+        valvesLayer.exitEnergy = 0;
+        valvesLayer.rightNotBlockedValve = true;
+      }
+    }
+
+    if (valvesLayer.rightValveIsHit && valvesLayer.rightNotBlockedValve) {
+      valvesLayer.rotateRightValve();
+      valvesLayer.exitEnergy += 0.05;
+
+      if (valvesLayer.exitEnergy >= 1) {
+        valvesLayer.exitEnergy = 1;
+        valvesLayer.rightNotBlockedValve = false;
+
+        CommonValuesGameFieldInterface.instance.resetValues();
+        exitCallback?.call();
+      }
+    }
+  }
+
+  void startShuffle() {
+    for (var i = 0; i < gameBlocks.length; i++) {
+      gameBlocks[i].alpha = 0;
+    }
+
+    dialLayer.alpha = 0;
+
+    randShuffleGameBlocks.clear;
+    randShuffleGameBlocks.addAll(gameBlocks);
+    randShuffleGameBlocks.shuffle();
+
+    currentShuffleIndex = 0;
+    currnetShuffleTimerStep = 0.5;
+    currentShaffleTimer = 0;
+    controlNotBlocked = false;
+    _shuffleTiles();
+  }
+
+  void _shuffleAnimation() {
+    currentShaffleTimer += currnetShuffleTimerStep;
+    if (currentShaffleTimer > 20) {
+      currnetShuffleTimerStep *= 1.5;
+      currentShaffleTimer = 0;
+
+      if (currentShuffleIndex < gameBlocks.length) {
+        randShuffleGameBlocks[currentShuffleIndex].alpha = 255;
+      }
+
+      currentShuffleIndex++;
+
+      if (currentShuffleIndex > gameBlocks.length) {
+        dialLayer.alpha = 255;
+        controlNotBlocked = true;
+      }
+    }
+  }
+
+  void _rightMoving() {
+    for (final gBlockPos in movePositions) {
+      if (moving) {
+        if (gBlockPos.gameBlock.posX != gBlockPos.endX) {
+          final step = (gBlockPos.endX - gBlockPos.gameBlock.posX).abs() *
+              movingStep *
+              (gBlockPos.endX - gBlockPos.gameBlock.posX).sign;
+          gBlockPos.gameBlock.move(step, 0);
+          gBlockPos.gameBlock.posX += step;
+
+          if ((gBlockPos.endX - gBlockPos.gameBlock.posX).abs() <
+              movingStep * 2) {
+            gBlockPos.gameBlock.posX = gBlockPos.endX;
+            rightMoving = false;
+          }
+        } else {
+          rightMoving = false;
+        }
+      } else {
+        gBlockPos.gameBlock.move(gBlockPos.endX - gBlockPos.gameBlock.posX, 0);
+        gBlockPos.gameBlock.posX = gBlockPos.endX;
+        rightMoving = false;
+      }
+    }
+
+    if (!rightMoving) {
+      _resetTapValues();
+    }
+  }
+
+  void _leftMoving() {
+    for (final gBlockPos in movePositions) {
+      if (moving) {
+        if (gBlockPos.gameBlock.posX != gBlockPos.startX) {
+          final step = (gBlockPos.startX - gBlockPos.gameBlock.posX).abs() *
+              movingStep *
+              (gBlockPos.startX - gBlockPos.gameBlock.posX).sign;
+          gBlockPos.gameBlock.move(step, 0);
+          gBlockPos.gameBlock.posX += step;
+
+          if ((gBlockPos.startX - gBlockPos.gameBlock.posX).abs() <
+              movingStep * 2) {
+            gBlockPos.gameBlock.posX = gBlockPos.startX;
+            leftMoving = false;
+          }
+        } else {
+          leftMoving = false;
+        }
+      } else {
+        gBlockPos.gameBlock
+            .move(gBlockPos.startX - gBlockPos.gameBlock.posX, 0);
+        gBlockPos.gameBlock.posX = gBlockPos.startX;
+        leftMoving = false;
+      }
+    }
+
+    if (!leftMoving) {
+      _resetTapValues();
+    }
+  }
+
+  void _downMoving() {
+    for (final gBlockPos in movePositions) {
+      if (moving) {
+        if (gBlockPos.gameBlock.posY != gBlockPos.endY) {
+          final step = (gBlockPos.endY - gBlockPos.gameBlock.posY).abs() *
+              movingStep *
+              (gBlockPos.endY - gBlockPos.gameBlock.posY).sign;
+          gBlockPos.gameBlock.move(0, step);
+          gBlockPos.gameBlock.posY += step;
+
+          if ((gBlockPos.endY - gBlockPos.gameBlock.posY).abs() <
+              movingStep * 2) {
+            gBlockPos.gameBlock.posY = gBlockPos.endY;
+            downMoving = false;
+          }
+        } else {
+          downMoving = false;
+        }
+      } else {
+        gBlockPos.gameBlock.move(0, gBlockPos.endY - gBlockPos.gameBlock.posY);
+        gBlockPos.gameBlock.posY = gBlockPos.endY;
+        downMoving = false;
+      }
+    }
+
+    if (!downMoving) {
+      _resetTapValues();
+    }
+  }
+
+  void _upMoving() {
+    for (final gBlockPos in movePositions) {
+      if (moving) {
+        if (gBlockPos.gameBlock.posY != gBlockPos.startY) {
+          final step = (gBlockPos.startY - gBlockPos.gameBlock.posY).abs() *
+              movingStep *
+              (gBlockPos.startY - gBlockPos.gameBlock.posY).sign;
+
+          gBlockPos.gameBlock.move(0, step);
+          gBlockPos.gameBlock.posY += step;
+
+          if ((gBlockPos.startY - gBlockPos.gameBlock.posY).abs() <
+              movingStep * 2) {
+            gBlockPos.gameBlock.posY = gBlockPos.startY;
+            upMoving = false;
+          }
+        } else {
+          upMoving = false;
+        }
+      } else {
+        gBlockPos.gameBlock
+            .move(0, gBlockPos.startY - gBlockPos.gameBlock.posY);
+        gBlockPos.gameBlock.posY = gBlockPos.startY;
+        upMoving = false;
+      }
+    }
+
+    if (!upMoving) {
+      _resetTapValues();
+    }
+  }
+
+  void update() {
+    /// Update energy when moved
+    if (controlNotBlocked) {
+      _updateEnergy();
+    } else {
+      _shuffleAnimation();
+    }
+
+    _updateValves();
+
+    if (rightMoving) {
+      _rightMoving();
+    } else if (leftMoving) {
+      _leftMoving();
+    } else if (downMoving) {
+      _downMoving();
+    } else if (upMoving) {
+      _upMoving();
+    }
+
+    /// Update particles layer
+    particlesLayer.update();
   }
 }

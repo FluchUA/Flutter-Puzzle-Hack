@@ -1,6 +1,15 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_canvas/game_controller.dart';
-import 'package:flutter_canvas/objects/game_block/game_block_painter.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter_canvas/painters/dial_layer_painter.dart';
+import 'package:flutter_canvas/painters/game_block_painter.dart';
+import 'package:flutter_canvas/painters/game_field_interface_painter.dart';
+import 'package:flutter_canvas/painters/particles_layer_painter.dart';
+import 'package:flutter_canvas/painters/valve_laver_painter.dart';
+import 'package:flutter_canvas/utils/common_values_game_field_interface.dart';
+import 'package:flutter_canvas/utils/common_values_model.dart';
+import 'package:flutter_canvas/utils/game_controller.dart';
 import 'package:flutter_canvas/widgets/block_custom_paint_widget.dart';
 
 class GamePage extends StatefulWidget {
@@ -20,66 +29,111 @@ class _GamePageState extends State<GamePage>
   @override
   void initState() {
     super.initState();
+    final commonValuesModel = CommonValuesModel.instance;
+    commonValuesModel.gearCircumference = 2 * pi * commonValuesModel.gearRadius;
+
     _gameController.init(nTiles: widget.nTiles);
     _gameController.winCallback = _showDialog;
-    _streamUpdate = Stream.periodic(const Duration(milliseconds: 10), (x) => x);
+    _gameController.exitCallback =
+        (() => SchedulerBinding.instance?.addPostFrameCallback((_) {
+              Navigator.pop(context);
+            }));
+
+    _streamUpdate = Stream.periodic(
+        Duration(milliseconds: commonValuesModel.updateTimerMS), (x) => x);
+
+    _showDialog(2, 2);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 30, 51, 30),
-        actions: [
-          IconButton(
-            onPressed: () => _gameController.shuffleTiles(),
-            icon: const Icon(
-              Icons.restart_alt_rounded,
-              size: 30,
-            ),
-          ),
-        ],
-      ),
-      body: SizedBox.expand(
-        child: Listener(
-          onPointerDown: (details) {
-            if (_gameController.selectedBlockIndex == -1) {
-              _gameController.onDown(
-                  details.localPosition.dx, details.localPosition.dy);
-            }
-          },
-          onPointerUp: (details) {
-            _gameController.onUp(
-                details.localPosition.dx, details.localPosition.dy);
-          },
-          onPointerMove: (details) {
-            _gameController.onMove(
-                details.localPosition.dx, details.localPosition.dy);
-          },
-          child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              _gameController.resizeGameField(
-                  constraints.maxWidth, constraints.maxHeight);
-
-              return StreamBuilder(
-                stream: _streamUpdate,
-                builder: (_, __) {
-                  return Container(
-                    color: const Color.fromARGB(255, 59, 100, 60),
-                    child: Stack(
-                      children: _gameController.gameBlocks
-                          .map(
-                            (gameBlock) => BlockCustomPaintWidget(
-                              gameBlockPainter:
-                                  GameBlockPainter(gameBlock: gameBlock),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  );
-                },
-              );
+    return WillPopScope(
+      onWillPop: () async {
+        CommonValuesGameFieldInterface.instance.resetValues();
+        return true;
+      },
+      child: Scaffold(
+        body: SizedBox.expand(
+          child: Listener(
+            onPointerDown: (details) {
+              if (_gameController.selectedBlockIndex == -1 ||
+                  _gameController.moving) {
+                _gameController.onDown(
+                    details.localPosition.dx, details.localPosition.dy);
+              }
             },
+            onPointerUp: (details) {
+              _gameController.onUp(
+                  details.localPosition.dx, details.localPosition.dy);
+            },
+            onPointerMove: (details) {
+              _gameController.onMove(
+                  details.localPosition.dx, details.localPosition.dy);
+            },
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                _gameController.resizeGameField(
+                    constraints.maxWidth, constraints.maxHeight);
+
+                return StreamBuilder(
+                  stream: _streamUpdate,
+                  builder: (_, __) {
+                    _gameController.update();
+
+                    return Container(
+                      color: Colors.black,
+                      child: Stack(
+                        children: [
+                          /// Game filed interface
+                          RepaintBoundary(
+                            child: CustomPaint(
+                              painter: GameFieldInterfacePainter(
+                                  gameFieldInterface:
+                                      _gameController.gameFieldInterface),
+                            ),
+                          ),
+
+                          /// Valves layer
+                          RepaintBoundary(
+                            child: CustomPaint(
+                              painter: ValveLayerPainter(
+                                  valvesLayer: _gameController.valvesLayer),
+                            ),
+                          ),
+
+                          /// Dial layer
+                          RepaintBoundary(
+                            child: CustomPaint(
+                              painter: DialLayerPainter(
+                                  dialLayer: _gameController.dialLayer),
+                            ),
+                          ),
+
+                          /// Blocks
+                          ..._gameController.gameBlocks
+                              .map(
+                                (gameBlock) => BlockCustomPaintWidget(
+                                  gameBlockPainter:
+                                      GameBlockPainter(gameBlock: gameBlock),
+                                ),
+                              )
+                              .toList(),
+
+                          /// Particles layer
+                          RepaintBoundary(
+                            child: CustomPaint(
+                              painter: ParticlesLayerPainter(
+                                  particlesLayer:
+                                      _gameController.particlesLayer),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -94,22 +148,70 @@ class _GamePageState extends State<GamePage>
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text('Congratulations You Win!!!'),
-            content: Text('Tiles: $nTiles\nMoves: $nMoves'),
+            backgroundColor: const Color.fromARGB(239, 51, 5, 5),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(
+                Radius.circular(15),
+              ),
+            ),
+            title: const Text(
+              'Congratulations You Win!!!',
+              style: TextStyle(
+                color: Color.fromARGB(255, 255, 165, 62),
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                shadows: <Shadow>[
+                  Shadow(
+                    offset: Offset(10, 10),
+                    blurRadius: 8.0,
+                    color: Color.fromARGB(255, 0, 0, 0),
+                  ),
+                ],
+              ),
+            ),
+            content: Text(
+              'Tiles: $nTiles\nMoves: $nMoves',
+              style: const TextStyle(
+                color: Color.fromARGB(255, 255, 165, 62),
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                shadows: <Shadow>[
+                  Shadow(
+                    offset: Offset(10, 10),
+                    blurRadius: 8.0,
+                    color: Color.fromARGB(255, 0, 0, 0),
+                  ),
+                ],
+              ),
+            ),
             actions: <Widget>[
               TextButton(
                 onPressed: () {
-                  _gameController.shuffleTiles();
+                  _gameController.startShuffle();
                   Navigator.pop(context);
                 },
-                child: const Text('New Game'),
+                child: const Text(
+                  'New Game',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromARGB(255, 202, 14, 14),
+                  ),
+                ),
               ),
               TextButton(
                 onPressed: () {
                   backToMainMenu = true;
                   Navigator.pop(context);
                 },
-                child: const Text('Back to Main Menu'),
+                child: const Text(
+                  'Back to Main Menu',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromARGB(255, 202, 14, 14),
+                  ),
+                ),
               )
             ],
           );
@@ -117,6 +219,7 @@ class _GamePageState extends State<GamePage>
       );
 
       if (backToMainMenu) {
+        CommonValuesGameFieldInterface.instance.resetValues();
         Navigator.pop(context);
       }
     });
