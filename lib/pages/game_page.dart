@@ -41,8 +41,6 @@ class _GamePageState extends State<GamePage>
 
     _streamUpdate = Stream.periodic(
         Duration(milliseconds: commonValuesModel.updateTimerMS), (x) => x);
-
-    _showDialog(2, 2);
   }
 
   @override
