@@ -19,7 +19,10 @@ Shuffle looks like the field is de-energized (control will be blocked) and gradu
 ![gallery 1](https://user-images.githubusercontent.com/62064623/158751137-5fff90df-f5f9-47d9-ab4a-7bb47b7be99d.jpg)
 ![gallery 3](https://user-images.githubusercontent.com/62064623/158751138-49497ccd-c49b-40dd-8658-6d1b3aeb80f5.jpg)
 
-Development steps
+![g1](https://user-images.githubusercontent.com/62064623/158753099-41ecc5da-d739-4e04-859a-7f74792f86b3.gif)
+![g2](https://user-images.githubusercontent.com/62064623/158753092-2f09131d-6781-41e3-bf6c-5764e7c7a507.gif)
+
+Development steps<br/>
 ![Steps](https://user-images.githubusercontent.com/62064623/158751130-42757104-62ca-4714-993f-295e317a6120.gif)
 
 Most of the focus is on the playing field because button styles, dialog boxes, and themes have not been set up properly.
