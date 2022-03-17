@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Canvas',
+      title: 'Flutter Puzzle Hack',
       home: MainMenuPage(),
     );
   }
