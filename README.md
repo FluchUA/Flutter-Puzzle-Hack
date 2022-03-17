@@ -4,7 +4,28 @@ A new Flutter project.
 
 Participating in the contest created a flutter header. The game uses only standard tools, most of it is Canvas.
 
-For details such as the style of buttons, splash screen themes I have not spent time because the style is not particularly impressive. On the game itself because of the situation in the country also did not have a lot of time because there was not enough time to implement good optimization.
+Style:
+Implemented as steampunk, pipes, seven-segment indication, sparks. More steam implementation was planned, but there was not enough time for obvious reasons. 
+
+Everything in the game is tied to the so-called energy. When you move the game object, the energy decreases and at the same time gradually fades indication of the moving object. When moving quickly, sparks may appear. 
+
+On the sides of the playing field are flasks that are filled with energy by scrolling the crane underneath it. Each flask is signed and implements the described action. Thus, when filling the Exit flask, the player will return to the main menu, also shuffle works.
+
+The flask is filled while the crane is turning. As soon as it is full, the tap control is blocked until the energy drops (as if overheating). 
+
+Shuffle looks like the field is de-energized (control will be blocked) and gradually resuming. You can clearly see by the chaotic accelerating activation of the seven-segment indicators.
+
+![gallery](https://user-images.githubusercontent.com/62064623/158751136-4cf7f6ba-b6b2-4c0c-99fd-27f2da58a066.jpg)
+![gallery 1](https://user-images.githubusercontent.com/62064623/158751137-5fff90df-f5f9-47d9-ab4a-7bb47b7be99d.jpg)
+![gallery 3](https://user-images.githubusercontent.com/62064623/158751138-49497ccd-c49b-40dd-8658-6d1b3aeb80f5.jpg)
+
+Development steps
+![Steps](https://user-images.githubusercontent.com/62064623/158751130-42757104-62ca-4714-993f-295e317a6120.gif)
+
+Most of the focus is on the playing field because button styles, dialog boxes, and themes have not been set up properly.
+
+
+
 
 
 
