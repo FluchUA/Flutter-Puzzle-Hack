@@ -15,6 +15,8 @@ The flask is filled while the crane is turning. As soon as it is full, the tap c
 
 Shuffle looks like the field is de-energized (control will be blocked) and gradually resuming. You can clearly see by the chaotic accelerating activation of the seven-segment indicators.
 
+Looks more interesting on devices with a big screen, as the game scales the interface and looks nicer and more pleasant :)
+
 ![gallery](https://user-images.githubusercontent.com/62064623/158751136-4cf7f6ba-b6b2-4c0c-99fd-27f2da58a066.jpg)
 ![gallery 1](https://user-images.githubusercontent.com/62064623/158751137-5fff90df-f5f9-47d9-ab4a-7bb47b7be99d.jpg)
 ![gallery 3](https://user-images.githubusercontent.com/62064623/158751138-49497ccd-c49b-40dd-8658-6d1b3aeb80f5.jpg)
