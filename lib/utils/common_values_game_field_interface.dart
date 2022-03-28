@@ -153,6 +153,7 @@ class CommonValuesGameFieldInterface {
 
     /// Field Borders
     fieldBordersStrokeWidth *= scaleValue;
+    fieldBordersBlurStrokeWidth *= scaleValue;
 
     /// Balloon
     balloonTopWidth *= scaleValue;
